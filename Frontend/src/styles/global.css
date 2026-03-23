@@ -1,0 +1,45 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+  --brand-primary: #800000;
+  --brand-primary-strong: #660000;
+  --brand-secondary: #9aa3af;
+  --brand-secondary-soft: #d8dde3;
+  --brand-accent: #1f2937;
+  --brand-accent-strong: #111827;
+  --brand-base: #f4f6f8;
+
+  --color-brand: var(--brand-primary);
+  --color-brand-strong: var(--brand-primary-strong);
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #1e293b;
+  background: var(--brand-base);
+}
+
+.font-title {
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+}
