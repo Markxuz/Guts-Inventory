@@ -5,10 +5,14 @@ const {
   addConsumable,
   updateConsumable,
   updateStock,
+  checkoutConsumable,
   archiveItem,
   restoreItem,
   deleteItem,
 } = require('../controllers/inventoryController');
+// Checkout a consumable (deducts stock, logs destination, notes, user)
+// POST /api/inventory/:id/checkout
+router.post('/:id/checkout', checkoutConsumable);
 
 // ┌──────────────────────────────────────────────────────────┐
 // │  Base path: /api/inventory  (mounted in server.js)       │

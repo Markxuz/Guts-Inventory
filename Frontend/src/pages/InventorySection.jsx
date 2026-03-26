@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import Button from "../components/Button"
 import ConsumableTable from "../components/ConsumableTable"
 import ConsumableModal from "../components/ConsumableModal"
+import CheckoutModal from "../components/CheckoutModal"
 import TrackHistory from "../components/TrackHistory"
 import { getInventoryByTrack } from "../api/inventoryApi"
-import { addConsumable, archiveConsumable, updateConsumable } from "../api/inventoryCrudApi"
+import { addConsumable, archiveConsumable, updateConsumable, checkoutConsumable } from "../api/inventoryCrudApi"
 import { useSearch } from "../context/SearchContext"
 import { normalizeItems } from "../utils/inventory"
 
@@ -13,6 +14,7 @@ const InventorySection = ({ title, description, track }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
+  const [checkoutItem, setCheckoutItem] = useState(null)
   const { searchQuery } = useSearch()
 
   const loadItems = async () => {
@@ -104,8 +106,17 @@ const InventorySection = ({ title, description, track }) => {
           Loading {title} consumables...
         </div>
       ) : (
-        <ConsumableTable items={filteredItems} onEdit={setEditingItem} onArchive={handleArchive} />
+        <div className="h-[340px] overflow-y-auto">
+          <ConsumableTable
+            items={filteredItems}
+            onEdit={setEditingItem}
+            onArchive={handleArchive}
+            onCheckout={setCheckoutItem}
+          />
+        </div>
       )}
+
+      <TrackHistory track={track} title={title} inventoryItems={items} logHeight="h-[260px]" />
 
       <ConsumableModal
         isOpen={isAddOpen}
@@ -117,6 +128,21 @@ const InventorySection = ({ title, description, track }) => {
         lockCategory
       />
 
+      <CheckoutModal
+        isOpen={!!checkoutItem}
+        item={checkoutItem}
+        onClose={() => setCheckoutItem(null)}
+        onSubmit={async (form) => {
+          if (!checkoutItem) return;
+          try {
+            await checkoutConsumable(checkoutItem.id, form);
+            setCheckoutItem(null);
+            await loadItems();
+          } catch (error) {
+            alert(error.response?.data?.error || "Checkout failed.");
+          }
+        }}
+      />
       <ConsumableModal
         isOpen={Boolean(editingItem)}
         title="Update Consumable"
@@ -125,8 +151,6 @@ const InventorySection = ({ title, description, track }) => {
         onSubmit={handleEdit}
         initialValues={editingItem || undefined}
       />
-
-      <TrackHistory track={track} title={title} inventoryItems={items} />
     </section>
   )
 }

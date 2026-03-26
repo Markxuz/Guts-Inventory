@@ -13,7 +13,7 @@ const MainLayout = () => {
     <div className="min-h-screen w-full bg-[var(--brand-base)]">
       <div className="flex min-h-screen w-full">
         <aside
-          className={`hidden h-screen shrink-0 border-r border-slate-700/70 bg-[var(--brand-accent)] transition-all duration-300 md:block print:hidden ${
+          className={`hidden min-h-full flex-grow-0 border-r border-slate-700/70 bg-[var(--brand-accent)] transition-all duration-300 md:block print:hidden ${
             isSidebarCollapsed ? "w-20" : "w-72"
           }`}
         >
@@ -23,7 +23,7 @@ const MainLayout = () => {
           />
         </aside>
 
-        <div className="relative w-full flex-1 transition-all duration-300">
+        <div className="relative w-full flex-1 min-h-screen flex flex-col transition-all duration-300">
           <div
             className={`fixed inset-0 z-40 bg-slate-900/50 transition-opacity duration-300 md:hidden ${
               isSidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
@@ -50,7 +50,7 @@ const MainLayout = () => {
             </Button>
           </div>
 
-          <div className="flex min-h-screen flex-col bg-slate-50 transition-all duration-300">
+          <div className="flex-1 flex flex-col bg-slate-50 transition-all duration-300">
             {/* Print-only header — hidden on screen, visible when printing */}
             <div className="hidden print:flex print:items-center print:gap-4 print:border-b print:border-slate-300 print:pb-4 print:mb-4 print:px-6 print:pt-6">
               <img src="/guts-logo.png" alt="GUTS Logo" className="h-16 w-16 object-contain" />
@@ -60,7 +60,9 @@ const MainLayout = () => {
                 <p className="text-xs text-slate-400">{new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
             </div>
-            <Navbar />
+            <div className="sticky top-0 z-30">
+              <Navbar />
+            </div>
             <main className="flex-1 p-5 transition-all duration-300 md:p-8">
               <Outlet />
             </main>

@@ -1,3 +1,45 @@
+// ─── POST /api/inventory/:id/checkout ───────────────────────────────────────
+// Body: { quantity, destination, notes, user }
+const checkoutConsumable = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { quantity, destination, notes, user } = req.body;
+
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'id must be a valid integer.' });
+  }
+  const parsedQty = parseInt(quantity, 10);
+  if (isNaN(parsedQty) || parsedQty <= 0) {
+    return res.status(400).json({ error: 'quantity must be a positive integer.' });
+  }
+  if (!destination || !user) {
+    return res.status(400).json({ error: 'destination and user are required.' });
+  }
+
+  try {
+    const item = await Consumable.findOne({ where: { id, ...ACTIVE_WHERE } });
+    if (!item) {
+      return res.status(404).json({ error: 'Consumable not found.' });
+    }
+    if (item.quantity < parsedQty) {
+      return res.status(400).json({ error: `Insufficient stock. Only ${item.quantity} available.` });
+    }
+    item.quantity -= parsedQty;
+    await item.save();
+
+    await logHistory({
+      consumableId: item.id,
+      actionType: 'Checkout',
+      quantityChanged: -parsedQty,
+      description: `Destination: ${destination}${notes ? ' | Notes: ' + notes : ''}`,
+      performedBy: user,
+    });
+
+    return res.json(formatItem(item));
+  } catch (err) {
+    console.error('[checkoutConsumable]', err);
+    return res.status(500).json({ error: 'Failed to checkout consumable.' });
+  }
+};
 const Consumable = require('../models/Consumable');
 const InventoryHistory = require('../models/InventoryHistory');
 
@@ -351,6 +393,7 @@ module.exports = {
   addConsumable,
   updateConsumable,
   updateStock,
+  checkoutConsumable,
   archiveItem,
   restoreItem,
   deleteItem,

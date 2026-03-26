@@ -1,3 +1,7 @@
+export const checkoutConsumable = async (id, payload) => {
+  const response = await api.post(`/inventory/${id}/checkout`, payload)
+  return response.data
+}
 import api from "./axios"
 
 export const addConsumable = async (payload) => {

@@ -5,7 +5,7 @@ const statusClassMap = {
   "Low Stock": "bg-[#fbe9ed] text-[#800000]"
 }
 
-const ConsumableTable = ({ items, onEdit, onArchive, showActions = true }) => {
+const ConsumableTable = ({ items, onEdit, onArchive, onCheckout, showActions = true }) => {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--brand-secondary-soft)] bg-white">
       <div className="overflow-x-auto">
@@ -50,6 +50,14 @@ const ConsumableTable = ({ items, onEdit, onArchive, showActions = true }) => {
                         aria-label={`Archive ${item.itemName}`}
                       >
                         <Archive className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onCheckout?.(item)}
+                        className="inline-flex rounded-lg border border-emerald-200 p-2 text-emerald-700 transition hover:bg-emerald-50"
+                        aria-label={`Checkout ${item.itemName}`}
+                      >
+                        🛒
                       </button>
                     </div>
                   </td>

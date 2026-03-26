@@ -132,7 +132,7 @@ const Dashboard = () => {
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 print:grid-cols-1">
             {/* Low Stock Alerts */}
-            <div className="space-y-3">
+            <div className="space-y-3 h-[480px] flex flex-col">
               <h3 className="font-title flex items-center gap-2 text-lg font-semibold text-slate-800">
                 <span className="h-5 w-1 rounded-full bg-[var(--brand-primary)]" />
                 Low Stock Alerts
@@ -143,11 +143,13 @@ const Dashboard = () => {
                 ) : null}
               </h3>
               {lowStockItems.length > 0 ? (
-                <ConsumableTable
-                  items={lowStockItems}
-                  onEdit={setEditingItem}
-                  onArchive={handleArchive}
-                />
+                <div className="flex-1 overflow-y-auto">
+                  <ConsumableTable
+                    items={lowStockItems}
+                    onEdit={setEditingItem}
+                    onArchive={handleArchive}
+                  />
+                </div>
               ) : (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
                   All consumables are currently healthy.
@@ -156,7 +158,7 @@ const Dashboard = () => {
             </div>
 
             {/* High Stock Inventory */}
-            <div className="space-y-3">
+            <div className="space-y-3 h-[480px] flex flex-col">
               <h3 className="font-title flex items-center gap-2 text-lg font-semibold text-slate-800">
                 <span className="h-5 w-1 rounded-full bg-emerald-500" />
                 High Stock Inventory
@@ -165,11 +167,13 @@ const Dashboard = () => {
                 </span>
               </h3>
               {highStockItems.length > 0 ? (
-                <ConsumableTable
-                  items={highStockItems}
-                  onEdit={setEditingItem}
-                  onArchive={handleArchive}
-                />
+                <div className="flex-1 overflow-y-auto">
+                  <ConsumableTable
+                    items={highStockItems}
+                    onEdit={setEditingItem}
+                    onArchive={handleArchive}
+                  />
+                </div>
               ) : (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                   No in-stock items found.
