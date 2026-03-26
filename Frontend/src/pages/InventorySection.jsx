@@ -2,11 +2,13 @@ import { useEffect, useState } from "react"
 import Button from "../components/Button"
 import ConsumableTable from "../components/ConsumableTable"
 import ConsumableModal from "../components/ConsumableModal"
-import CheckoutModal from "../components/CheckoutModal"
+import ComprehensiveItemModal from "../components/ComprehensiveItemModal"
 import TrackHistory from "../components/TrackHistory"
 import { getInventoryByTrack } from "../api/inventoryApi"
-import { addConsumable, archiveConsumable, updateConsumable, checkoutConsumable } from "../api/inventoryCrudApi"
+import { addConsumable, archiveConsumable, updateConsumable, updateStock } from "../api/inventoryCrudApi"
+import { getHistoryLogs } from "../api/historyApi"
 import { useSearch } from "../context/SearchContext"
+import { useNotifications } from "../context/NotificationContext"
 import { normalizeItems } from "../utils/inventory"
 
 const InventorySection = ({ title, description, track }) => {
@@ -14,8 +16,11 @@ const InventorySection = ({ title, description, track }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
-  const [checkoutItem, setCheckoutItem] = useState(null)
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [itemHistory, setItemHistory] = useState([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const { searchQuery } = useSearch()
+  const { setOnStockUpdate } = useNotifications()
 
   const loadItems = async () => {
     setIsLoading(true)
@@ -24,9 +29,46 @@ const InventorySection = ({ title, description, track }) => {
     setIsLoading(false)
   }
 
+  // Fetch history when item is selected
+  const handleSelectItem = async (item) => {
+    setSelectedItem(item)
+    setIsLoadingHistory(true)
+    try {
+      const logs = await getHistoryLogs({ itemId: item.id })
+      setItemHistory(logs || [])
+    } catch (error) {
+      console.error("Failed to fetch item history", error)
+      setItemHistory([])
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
   useEffect(() => {
     loadItems()
   }, [track])
+
+  // Listen for real-time stock updates
+  useEffect(() => {
+    const handleStockUpdate = (data) => {
+      console.log('📦 Updating inventory section with stock update:', data)
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === data.id ? { ...item, quantity: data.quantity } : item
+        )
+      )
+      // Update selected item if it was modified
+      if (selectedItem && selectedItem.id === data.id) {
+        setSelectedItem(prev => ({ ...prev, quantity: data.quantity }))
+      }
+    }
+    
+    setOnStockUpdate(() => handleStockUpdate)
+    
+    return () => {
+      setOnStockUpdate(null)
+    }
+  }, [selectedItem, setOnStockUpdate])
 
   const filteredItems = items.filter((item) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -71,12 +113,56 @@ const InventorySection = ({ title, description, track }) => {
     }
   }
 
+  const handleAddStock = async (formData) => {
+    if (!selectedItem) return
+    
+    try {
+      await updateStock(selectedItem.id, {
+        type: "in",
+        amount: parseInt(formData.quantity, 10),
+        description: formData.notes,
+        performedBy: formData.performedBy,
+        course: formData.course,
+        trainer: formData.trainer,
+        purpose: formData.purpose,
+      })
+      setSelectedItem(null)
+      setItemHistory([])
+      await loadItems()
+      alert("Stock added successfully!")
+    } catch (error) {
+      alert(error.response?.data?.error || "Failed to add stock.")
+    }
+  }
+
+  const handleDeductStock = async (formData) => {
+    if (!selectedItem) return
+    
+    try {
+      await updateStock(selectedItem.id, {
+        type: "out",
+        amount: parseInt(formData.quantity, 10),
+        description: formData.notes,
+        performedBy: formData.performedBy,
+        course: formData.course,
+        trainer: formData.trainer,
+        purpose: formData.purpose,
+      })
+      setSelectedItem(null)
+      setItemHistory([])
+      await loadItems()
+      alert("Stock deducted successfully!")
+    } catch (error) {
+      alert(error.response?.data?.error || "Failed to deduct stock.")
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-title text-2xl font-semibold text-slate-800">{title}</h2>
-          <p className="text-sm text-slate-600">{description}</p>
+          <h2 className="font-title text-3xl font-bold text-[var(--brand-primary)]">{title}</h2>
+          <p className="mt-2 text-sm text-slate-600">{description}</p>
         </div>
         <Button
           className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"
@@ -111,7 +197,7 @@ const InventorySection = ({ title, description, track }) => {
             items={filteredItems}
             onEdit={setEditingItem}
             onArchive={handleArchive}
-            onCheckout={setCheckoutItem}
+            onRowClick={handleSelectItem}
           />
         </div>
       )}
@@ -128,21 +214,18 @@ const InventorySection = ({ title, description, track }) => {
         lockCategory
       />
 
-      <CheckoutModal
-        isOpen={!!checkoutItem}
-        item={checkoutItem}
-        onClose={() => setCheckoutItem(null)}
-        onSubmit={async (form) => {
-          if (!checkoutItem) return;
-          try {
-            await checkoutConsumable(checkoutItem.id, form);
-            setCheckoutItem(null);
-            await loadItems();
-          } catch (error) {
-            alert(error.response?.data?.error || "Checkout failed.");
-          }
+      <ComprehensiveItemModal
+        isOpen={!!selectedItem && !isLoadingHistory}
+        item={selectedItem}
+        itemHistory={itemHistory}
+        onClose={() => {
+          setSelectedItem(null)
+          setItemHistory([])
         }}
+        onAddStock={handleAddStock}
+        onDeductStock={handleDeductStock}
       />
+
       <ConsumableModal
         isOpen={Boolean(editingItem)}
         title="Update Consumable"

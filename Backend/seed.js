@@ -5,12 +5,12 @@ const InventoryHistory = require('./models/InventoryHistory');
 
 // ─── 15 sample items: 5 per category ──────────────────────────────────────────
 const seedData = [
-  // ── IEM: Electrical Installation and Maintenance ──────────────────────────
-  { itemName: 'PVC Conduit 20mm',    category: 'IEM',  quantity: 48,  unit: 'pcs',    reorderLevel: 10 },
-  { itemName: 'Electrical Tape',     category: 'IEM',  quantity: 25,  unit: 'rolls',  reorderLevel: 15 },
-  { itemName: 'Circuit Breaker 20A', category: 'IEM',  quantity: 8,   unit: 'pcs',    reorderLevel: 5  },
-  { itemName: 'Junction Box',        category: 'IEM',  quantity: 14,  unit: 'pcs',    reorderLevel: 5  },
-  { itemName: 'Wire 2.0mm (THHN)',   category: 'IEM',  quantity: 120, unit: 'meters', reorderLevel: 30 },
+  // ── EIM: Electrical Installation and Maintenance ──────────────────────────
+  { itemName: 'PVC Conduit 20mm',    category: 'EIM',  quantity: 48,  unit: 'pcs',    reorderLevel: 10 },
+  { itemName: 'Electrical Tape',     category: 'EIM',  quantity: 25,  unit: 'rolls',  reorderLevel: 15 },
+  { itemName: 'Circuit Breaker 20A', category: 'EIM',  quantity: 8,   unit: 'pcs',    reorderLevel: 5  },
+  { itemName: 'Junction Box',        category: 'EIM',  quantity: 14,  unit: 'pcs',    reorderLevel: 5  },
+  { itemName: 'Wire 2.0mm (THHN)',   category: 'EIM',  quantity: 120, unit: 'meters', reorderLevel: 30 },
 
   // ── SMAW: Shielded Metal Arc Welding ──────────────────────────────────────
   { itemName: 'E6013 Welding Rod 3.2mm', category: 'SMAW', quantity: 26, unit: 'kg',    reorderLevel: 10 },

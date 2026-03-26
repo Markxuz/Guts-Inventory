@@ -42,9 +42,52 @@ const checkoutConsumable = async (req, res) => {
 };
 const Consumable = require('../models/Consumable');
 const InventoryHistory = require('../models/InventoryHistory');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
-const VALID_CATEGORIES = ['IEM', 'SMAW', 'CSS'];
+const VALID_CATEGORIES = ['EIM', 'SMAW', 'CSS'];
 const ACTIVE_WHERE = { isArchived: false };
+
+/**
+ * Send notification to all admin users via Socket.IO
+ */
+const sendNotificationToAdmins = async (req, notificationType, message, staffName, consumableName, quantity, metadata) => {
+  try {
+    // Find all admin users
+    const admins = await User.findAll({ where: { role: 'admin' } });
+    
+    // Create notification for each admin
+    for (const admin of admins) {
+      const notification = await Notification.create({
+        userId: admin.id,
+        type: notificationType,
+        message,
+        staffName,
+        consumableName,
+        quantity,
+        metadata,
+      });
+
+      // Emit real-time notification via Socket.IO
+      const io = req.app?.locals?.io;
+      const userSockets = req.app?.locals?.userSockets;
+      
+      if (io && userSockets && userSockets[admin.id]) {
+        io.to(userSockets[admin.id]).emit('new_notification', {
+          id: notification.id,
+          type: notificationType,
+          message,
+          staffName,
+          consumableName,
+          quantity,
+          createdAt: notification.createdAt,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[sendNotificationToAdmins]', err);
+  }
+};
 
 /**
  * Strips timestamps and returns only the fields the frontend needs.
@@ -63,18 +106,23 @@ const parsePayload = ({ itemName, category, quantity, unit, reorderLevel }) => (
   reorderLevel: reorderLevel !== undefined ? parseInt(reorderLevel, 10) : 10,
 });
 
-const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy }) => {
+const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose }) => {
   await InventoryHistory.create({
     consumableId,
     actionType,
     quantityChanged,
     description: description || null,
     performedBy: performedBy || 'System',
+    beginningInventory: beginningInventory || null,
+    endingInventory: endingInventory || null,
+    course: course || null,
+    trainer: trainer || null,
+    purpose: purpose || null,
   });
 };
 
 // ─── GET /api/inventory ────────────────────────────────────────────────────────
-// Returns { tracks: { iem: [...], smaw: [...], css: [...] } }
+// Returns { tracks: { eim: [...], smaw: [...], css: [...] } }
 // Used by the Dashboard page to show totals and low-stock alerts.
 const getInventory = async (req, res) => {
   const queryCategory = req.query.category?.toUpperCase();
@@ -98,7 +146,7 @@ const getInventory = async (req, res) => {
       return res.json({ items: rows.map(formatItem) });
     }
 
-    const tracks = { iem: [], smaw: [], css: [] };
+    const tracks = { eim: [], smaw: [], css: [] };
     for (const row of rows) {
       const key = row.category.toLowerCase();
       if (Object.prototype.hasOwnProperty.call(tracks, key)) {
@@ -115,8 +163,8 @@ const getInventory = async (req, res) => {
 
 // ─── GET /api/inventory/:category ─────────────────────────────────────────────
 // Returns { items: [...] }
-// Used by the IEM, SMAW, and CSS inventory pages.
-// :category is lowercase from the frontend ('iem', 'smaw', 'css').
+// Used by the EIM, SMAW, and CSS inventory pages.
+// :category is lowercase from the frontend ('eim', 'smaw', 'css').
 const getInventoryByCategory = async (req, res) => {
   const upperCategory = req.params.category.toUpperCase();
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
@@ -173,6 +221,18 @@ const addConsumable = async (req, res) => {
       description: 'Initial stock from new consumable creation.',
       performedBy: req.body.performedBy,
     });
+
+    // Send notification to admins
+    const staffName = req.body.performedBy || req.user?.username || 'Staff';
+    await sendNotificationToAdmins(
+      req,
+      'consumable_added',
+      `${staffName} added a new consumable: ${itemName}`,
+      staffName,
+      itemName,
+      quantity,
+      { itemId: item.id, category: upperCategory }
+    );
 
     return res.status(201).json(formatItem(item));
   } catch (err) {
@@ -273,6 +333,7 @@ const updateStock = async (req, res) => {
       return res.status(404).json({ error: 'Consumable not found.' });
     }
 
+    const beginningQty = item.quantity;
     const newQuantity =
       type === 'in' ? item.quantity + parsedAmount : item.quantity - parsedAmount;
 
@@ -291,7 +352,42 @@ const updateStock = async (req, res) => {
       quantityChanged: type === 'in' ? parsedAmount : -parsedAmount,
       description: req.body.description || null,
       performedBy: req.body.performedBy,
+      beginningInventory: beginningQty,
+      endingInventory: newQuantity,
+      course: req.body.course || null,
+      trainer: req.body.trainer || null,
+      purpose: req.body.purpose || null,
     });
+
+    // Send notification to admins
+    const staffName = req.body.performedBy || req.user?.username || 'Staff';
+    const actionText = type === 'in' ? 'added' : 'deducted';
+    await sendNotificationToAdmins(
+      req,
+      type === 'in' ? 'stock_added' : 'stock_removed',
+      `${staffName} ${actionText} ${parsedAmount} units of ${item.itemName}`,
+      staffName,
+      item.itemName,
+      parsedAmount,
+      { itemId: item.id, type, beginningQty, newQuantity }
+    );
+
+    // Broadcast stock update to all connected clients via Socket.IO
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('stock_updated', {
+        id: item.id,
+        itemName: item.itemName,
+        category: item.category,
+        quantity: item.quantity,
+        unit: item.unit,
+        reorderLevel: item.reorderLevel,
+        actionType: type === 'in' ? 'Stock In' : 'Stock Out',
+        staffName,
+        parsedAmount,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     return res.json(formatItem(item));
   } catch (err) {

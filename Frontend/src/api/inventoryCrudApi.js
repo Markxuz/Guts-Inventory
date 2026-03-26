@@ -1,7 +1,3 @@
-export const checkoutConsumable = async (id, payload) => {
-  const response = await api.post(`/inventory/${id}/checkout`, payload)
-  return response.data
-}
 import api from "./axios"
 
 export const addConsumable = async (payload) => {
@@ -21,5 +17,10 @@ export const archiveConsumable = async (id) => {
 
 export const restoreConsumable = async (id) => {
   const response = await api.patch(`/inventory/${id}/restore`)
+  return response.data
+}
+
+export const updateStock = async (id, payload) => {
+  const response = await api.patch(`/inventory/${id}/stock`, payload)
   return response.data
 }

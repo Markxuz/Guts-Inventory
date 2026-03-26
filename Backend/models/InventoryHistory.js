@@ -20,8 +20,28 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
     allowNull: false,
     defaultValue: 0,
   },
+  beginningInventory: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  endingInventory: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   description: {
     type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  course: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  trainer: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  purpose: {
+    type: DataTypes.ENUM('Training', 'Assessment', 'Replenishment'),
     allowNull: true,
   },
   performedBy: {

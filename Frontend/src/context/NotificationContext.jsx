@@ -1,0 +1,138 @@
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
+import { useAuth } from './AuthContext';
+
+const NotificationContext = createContext();
+
+export const NotificationProvider = ({ children }) => {
+  const { user, token } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [socket, setSocket] = useState(null);
+  const [onStockUpdate, setOnStockUpdate] = useState(null);
+
+  // Determine the socket URL (remove /api from the base URL)
+  const getSocketUrl = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    return apiUrl.replace(/\/api$/, '');
+  };
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const socketUrl = getSocketUrl();
+    const socketInstance = io(socketUrl, {
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('📱 Socket connected');
+      // Register user for notifications
+      socketInstance.emit('user_connect', user.id);
+    });
+
+    socketInstance.on('new_notification', (data) => {
+      console.log('🔔 New notification:', data);
+      setNotifications((prev) => [data, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    socketInstance.on('stock_updated', (data) => {
+      console.log('📦 Stock updated:', data);
+      // Call the registered callback if one exists
+      if (onStockUpdate) {
+        onStockUpdate(data);
+      }
+    });
+
+    socketInstance.on('disconnect', () => {
+      console.log('📴 Socket disconnected');
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [user, token, onStockUpdate]);
+
+  const getApiUrl = () => {
+    return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  };
+
+  const markAsRead = useCallback(async (notificationId) => {
+    try {
+      await fetch(`${getApiUrl()}/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === notificationId ? { ...notif, isRead: true } : notif
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  }, [token]);
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await fetch(`${getApiUrl()}/notifications/read/all`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
+  }, [token]);
+
+  const deleteNotification = useCallback(async (notificationId) => {
+    try {
+      await fetch(`${getApiUrl()}/notifications/${notificationId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  }, [token]);
+
+  return (
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        socket,
+        markAsRead,
+        markAllAsRead,
+        deleteNotification,
+        setOnStockUpdate,
+      }}
+    >
+      {children}
+    </NotificationContext.Provider>
+  );
+};
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within NotificationProvider');
+  }
+  return context;
+};

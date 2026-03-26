@@ -1,13 +1,13 @@
 import InventorySection from "./InventorySection"
 
-const IEM = () => {
+const EIM = () => {
   return (
     <InventorySection
-      title="IEM Inventory"
+      title="EIM Inventory"
       description="Electrical Installation and Maintenance consumables and tools."
-      track="iem"
+      track="eim"
     />
   )
 }
 
-export default IEM
+export default EIM

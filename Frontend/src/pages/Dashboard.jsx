@@ -7,10 +7,11 @@ import ConsumableModal from "../components/ConsumableModal"
 import { getDashboardInventory } from "../api/inventoryApi"
 import { addConsumable, archiveConsumable, updateConsumable } from "../api/inventoryCrudApi"
 import { useSearch } from "../context/SearchContext"
+import { useNotifications } from "../context/NotificationContext"
 import { normalizeItems, summarizeInventory } from "../utils/inventory"
 
 const trackIconMap = {
-  IEM: PackageOpen,
+  EIM: PackageOpen,
   SMAW: Wrench,
   CSS: ShieldCheck
 }
@@ -22,12 +23,13 @@ const Dashboard = () => {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const { searchQuery } = useSearch()
+  const { setOnStockUpdate } = useNotifications()
 
   const loadDashboard = async () => {
     setIsLoading(true)
     const inventoryByTrack = await getDashboardInventory()
     const combinedItems = [
-      ...(inventoryByTrack.iem || []),
+      ...(inventoryByTrack.eim || []),
       ...(inventoryByTrack.smaw || []),
       ...(inventoryByTrack.css || [])
     ]
@@ -38,6 +40,29 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboard()
+  }, [])
+
+  // Listen for real-time stock updates
+  useEffect(() => {
+    const handleStockUpdate = (data) => {
+      console.log('📦 Updating dashboard with stock update:', data)
+      setAllItems(prevItems =>
+        prevItems.map(item =>
+          item.id === data.id ? { ...item, quantity: data.quantity } : item
+        )
+      )
+      // Update summary totals
+      setSummary(prevSummary => ({
+        ...prevSummary,
+        grandTotal: prevSummary.grandTotal
+      }))
+    }
+    
+    setOnStockUpdate(() => handleStockUpdate)
+    
+    return () => {
+      setOnStockUpdate(null)
+    }
   }, [])
 
   const lowStockItems = useMemo(

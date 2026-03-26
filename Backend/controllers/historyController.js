@@ -2,7 +2,7 @@ const { Op } = require('sequelize');
 const InventoryHistory = require('../models/InventoryHistory');
 const Consumable = require('../models/Consumable');
 
-const VALID_CATEGORIES = ['IEM', 'SMAW', 'CSS'];
+const VALID_CATEGORIES = ['EIM', 'SMAW', 'CSS'];
 
 const getHistory = async (req, res) => {
   try {
@@ -56,7 +56,12 @@ const getHistory = async (req, res) => {
         itemName: nameMap[plain.consumableId] || 'Unknown Item',
         actionType: plain.actionType,
         quantityChanged: plain.quantityChanged,
+        beginningInventory: plain.beginningInventory,
+        endingInventory: plain.endingInventory,
         description: plain.description || '',
+        course: plain.course || '',
+        trainer: plain.trainer || '',
+        purpose: plain.purpose || '',
         performedBy: plain.performedBy || 'System',
         createdAt: plain.createdAt,
       };

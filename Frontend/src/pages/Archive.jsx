@@ -15,7 +15,7 @@ const Archive = () => {
 
     try {
       const tracks = await getArchivedInventory()
-      const combined = [...tracks.iem, ...tracks.smaw, ...tracks.css]
+      const combined = [...tracks.eim, ...tracks.smaw, ...tracks.css]
       setItems(normalizeItems(combined))
     } catch {
       setItems([])

@@ -5,7 +5,7 @@ const statusClassMap = {
   "Low Stock": "bg-[#fbe9ed] text-[#800000]"
 }
 
-const ConsumableTable = ({ items, onEdit, onArchive, onCheckout, showActions = true }) => {
+const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = true }) => {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--brand-secondary-soft)] bg-white">
       <div className="overflow-x-auto">
@@ -21,7 +21,11 @@ const ConsumableTable = ({ items, onEdit, onArchive, onCheckout, showActions = t
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {items.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/70">
+              <tr
+                key={item.id}
+                onClick={() => onRowClick?.(item)}
+                className="cursor-pointer hover:bg-[#fce4e8]/40 transition"
+              >
                 <td className="px-5 py-4 font-medium text-slate-700">{item.itemName}</td>
                 <td className="px-5 py-4 text-slate-700">{item.quantity}</td>
                 <td className="px-5 py-4 text-slate-600">{item.unit}</td>
@@ -33,7 +37,7 @@ const ConsumableTable = ({ items, onEdit, onArchive, onCheckout, showActions = t
                   </span>
                 </td>
                 {showActions ? (
-                  <td className="px-5 py-4 print:hidden">
+                  <td className="px-5 py-4 print:hidden" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -50,14 +54,6 @@ const ConsumableTable = ({ items, onEdit, onArchive, onCheckout, showActions = t
                         aria-label={`Archive ${item.itemName}`}
                       >
                         <Archive className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onCheckout?.(item)}
-                        className="inline-flex rounded-lg border border-emerald-200 p-2 text-emerald-700 transition hover:bg-emerald-50"
-                        aria-label={`Checkout ${item.itemName}`}
-                      >
-                        🛒
                       </button>
                     </div>
                   </td>

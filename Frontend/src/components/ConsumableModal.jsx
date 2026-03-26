@@ -4,7 +4,7 @@ import Button from "./Button"
 
 const emptyForm = {
   itemName: "",
-  category: "IEM",
+  category: "EIM",
   quantity: 0,
   unit: "pcs",
   reorderLevel: 10
@@ -81,7 +81,7 @@ const ConsumableModal = ({
                 disabled={lockCategory}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)] disabled:bg-slate-100"
               >
-                <option value="IEM">IEM</option>
+                <option value="EIM">EIM</option>
                 <option value="SMAW">SMAW</option>
                 <option value="CSS">CSS</option>
               </select>

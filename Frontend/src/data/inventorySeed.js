@@ -1,9 +1,9 @@
 export const inventorySeed = {
-  iem: [
-    { id: "iem-1", itemName: "PVC Conduit 20mm", quantity: 48, unit: "pcs" },
-    { id: "iem-2", itemName: "Electrical Tape", quantity: 12, unit: "rolls" },
-    { id: "iem-3", itemName: "Toggle Switch", quantity: 7, unit: "pcs" },
-    { id: "iem-4", itemName: "Junction Box", quantity: 4, unit: "pcs" }
+  eim: [
+    { id: "eim-1", itemName: "PVC Conduit 20mm", quantity: 48, unit: "pcs" },
+    { id: "eim-2", itemName: "Electrical Tape", quantity: 12, unit: "rolls" },
+    { id: "eim-3", itemName: "Toggle Switch", quantity: 7, unit: "pcs" },
+    { id: "eim-4", itemName: "Junction Box", quantity: 4, unit: "pcs" }
   ],
   smaw: [
     { id: "smaw-1", itemName: "E6013 Welding Rod 3.2mm", quantity: 26, unit: "kg" },

@@ -15,12 +15,12 @@ const Consumable = sequelize.define('Consumable', {
     },
   },
   category: {
-    type: DataTypes.ENUM('IEM', 'SMAW', 'CSS'),
+    type: DataTypes.ENUM('EIM', 'SMAW', 'CSS'),
     allowNull: false,
     validate: {
       isIn: {
-        args: [['IEM', 'SMAW', 'CSS']],
-        msg: 'category must be one of: IEM, SMAW, CSS.',
+        args: [['EIM', 'SMAW', 'CSS']],
+        msg: 'category must be one of: EIM, SMAW, CSS.',
       },
     },
   },

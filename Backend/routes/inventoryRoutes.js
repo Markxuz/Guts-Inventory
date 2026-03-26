@@ -18,11 +18,11 @@ router.post('/:id/checkout', checkoutConsumable);
 // │  Base path: /api/inventory  (mounted in server.js)       │
 // └──────────────────────────────────────────────────────────┘
 
-// Dashboard: all tracks grouped  →  { tracks: { iem, smaw, css } }
+// Dashboard: all tracks grouped  →  { tracks: { eim, smaw, css } }
 router.get('/', getInventory);
 
 // Single track: items for a category  →  { items: [...] }
-// :category is lowercase from the frontend ('iem', 'smaw', 'css')
+// :category is lowercase from the frontend ('eim', 'smaw', 'css')
 router.get('/:category', getInventoryByCategory);
 
 // Create a new consumable
