@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react"
-import { X, TrendingUp, TrendingDown, Package, Printer } from "lucide-react"
+import { X, TrendingUp, TrendingDown } from "lucide-react"
 import Button from "./Button"
 
 const ComprehensiveItemModal = ({
   isOpen,
   item,
   onClose,
-  itemHistory,
   onAddStock,
   onDeductStock,
+  action, // "add" or "deduct"
 }) => {
-  const [activeTab, setActiveTab] = useState("purchase")
-  const [activeAction, setActiveAction] = useState(null)
+  const [activeAction, setActiveAction] = useState(action || null)
   const [formData, setFormData] = useState({
     quantity: "",
     performedBy: "",
@@ -24,8 +23,7 @@ const ComprehensiveItemModal = ({
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setActiveTab("purchase")
-      setActiveAction(null)
+      setActiveAction(action || null)
       setFormData({
         quantity: "",
         performedBy: "",
@@ -35,7 +33,7 @@ const ComprehensiveItemModal = ({
         purpose: "Training",
       })
     }
-  }, [isOpen])
+  }, [isOpen, action])
 
   if (!isOpen || !item) return null
 
@@ -74,224 +72,6 @@ const ComprehensiveItemModal = ({
     }
     handleReset()
   }
-
-  const handlePrintReport = () => {
-    const historyData = activeTab === "purchase" ? purchaseHistory : consumptionHistory
-    const reportTitle = activeTab === "purchase" ? "Purchase History Report" : "Consumption History Report"
-    
-    const printWindow = window.open("", "", "width=900,height=800")
-    
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${reportTitle}</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #800000;
-            padding-bottom: 15px;
-          }
-          .header h1 {
-            margin: 0;
-            color: #800000;
-            font-size: 24px;
-          }
-          .header p {
-            margin: 5px 0;
-            color: #666;
-            font-size: 14px;
-          }
-          .item-info {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8eef0;
-            border-left: 4px solid #800000;
-          }
-          .item-info h3 {
-            margin: 0 0 10px 0;
-            color: #800000;
-          }
-          .info-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            font-size: 13px;
-          }
-          .info-item {
-            display: flex;
-            flex-direction: column;
-          }
-          .info-label {
-            font-weight: bold;
-            color: #666;
-            font-size: 11px;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-          }
-          .info-value {
-            font-size: 14px;
-            color: #333;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 12px;
-          }
-          th {
-            background-color: #800000;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-            border: 1px solid #600000;
-          }
-          td {
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-          }
-          tr:nth-child(even) {
-            background-color: #f9f9f9;
-          }
-          tr:hover {
-            background-color: #f0f0f0;
-          }
-          .text-center {
-            text-align: center;
-          }
-          .text-right {
-            text-align: right;
-          }
-          .positive {
-            color: #059669;
-            font-weight: bold;
-          }
-          .negative {
-            color: #dc2626;
-            font-weight: bold;
-          }
-          .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            font-size: 11px;
-            color: #999;
-          }
-          .no-data {
-            text-align: center;
-            padding: 30px;
-            color: #999;
-            font-style: italic;
-          }
-          @media print {
-            body {
-              margin: 0;
-            }
-            .header {
-              page-break-after: avoid;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>${reportTitle}</h1>
-          <p>The Vail Academy - TESDA Training Center</p>
-          <p>Report Generated: ${new Date().toLocaleDateString("en-PH")} ${new Date().toLocaleTimeString("en-PH")}</p>
-        </div>
-
-        <div class="item-info">
-          <h3>Item Details</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Item Name</span>
-              <span class="info-value">${item.itemName}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Category</span>
-              <span class="info-value">${item.category}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Current Stock</span>
-              <span class="info-value">${item.quantity} ${item.unit}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Reorder Level</span>
-              <span class="info-value">${item.reorderLevel}</span>
-            </div>
-          </div>
-        </div>
-
-        ${historyData.length === 0 ? `
-          <div class="no-data">
-            No ${activeTab === "purchase" ? "purchase" : "consumption"} history records available.
-          </div>
-        ` : `
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Beginning Inventory</th>
-                <th>${activeTab === "purchase" ? "Purchased" : "Consumption"}</th>
-                <th>Ending Inventory</th>
-                <th>Course</th>
-                <th>Trainer</th>
-                <th>Performer</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${historyData.map(record => `
-                <tr>
-                  <td class="text-center">${new Date(record.createdAt).toLocaleDateString("en-PH")}</td>
-                  <td class="text-center">${record.beginningInventory ?? "—"}</td>
-                  <td class="text-center ${record.quantityChanged > 0 ? "positive" : "negative"}">
-                    ${Math.abs(record.quantityChanged)}
-                  </td>
-                  <td class="text-center">${record.endingInventory ?? "—"}</td>
-                  <td>${record.course || "—"}</td>
-                  <td>${record.trainer || "—"}</td>
-                  <td>${record.performedBy}</td>
-                  <td>${record.description || record.notes || "—"}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        `}
-
-        <div class="footer">
-          <p>This is an automatically generated report. Please verify the information for accuracy.</p>
-        </div>
-      </body>
-      </html>
-    `
-
-    printWindow.document.write(htmlContent)
-    printWindow.document.close()
-    
-    setTimeout(() => {
-      printWindow.print()
-    }, 250)
-  }
-
-  // Filter history by action type
-  const purchaseHistory = itemHistory?.filter(
-    (h) => h.actionType === "Stock In"
-  ) || []
-  const consumptionHistory = itemHistory?.filter(
-    (h) => h.actionType === "Stock Out"
-  ) || []
-
-  const currentTab =
-    activeTab === "purchase" ? purchaseHistory : consumptionHistory
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -354,14 +134,6 @@ const ComprehensiveItemModal = ({
                   </p>
                   <p className="mt-2 inline-block rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
                     {item.category}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Total Records
-                  </p>
-                  <p className="mt-2 font-title text-2xl font-bold text-slate-800">
-                    {itemHistory?.length || 0}
                   </p>
                 </div>
               </div>
@@ -559,132 +331,6 @@ const ComprehensiveItemModal = ({
                 </form>
               </div>
             )}
-
-            {/* Tabs */}
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50">
-                <div className="flex flex-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("purchase")}
-                    className={`flex-1 px-6 py-3 font-semibold transition ${
-                      activeTab === "purchase"
-                        ? "border-b-2 border-[var(--brand-primary)] text-[var(--brand-primary)] bg-white"
-                        : "text-slate-600 hover:text-slate-800"
-                    }`}
-                  >
-                    Purchase History ({purchaseHistory.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("consumption")}
-                    className={`flex-1 px-6 py-3 font-semibold transition ${
-                      activeTab === "consumption"
-                        ? "border-b-2 border-[var(--brand-primary)] text-[var(--brand-primary)] bg-white"
-                        : "text-slate-600 hover:text-slate-800"
-                    }`}
-                  >
-                    Consumption History ({consumptionHistory.length})
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={handlePrintReport}
-                  disabled={currentTab.length === 0}
-                  className={`px-4 py-3 mr-2 flex items-center gap-2 rounded-lg transition flex-shrink-0 ${
-                    currentTab.length === 0
-                      ? "text-slate-400 cursor-not-allowed"
-                      : "text-[var(--brand-primary)] hover:bg-slate-100"
-                  }`}
-                  title="Print report"
-                >
-                  <Printer className="h-5 w-5" />
-                  <span className="text-sm font-semibold">Print</span>
-                </button>
-              </div>
-
-              {/* History Table */}
-              <div className="overflow-x-auto">
-                {currentTab.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-slate-500">
-                    <Package className="mr-2 h-5 w-5" />
-                    <p>No history records yet</p>
-                  </div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-100">
-                      <tr className="border-b border-slate-200">
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Date
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Beginning
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-700">
-                          {activeTab === "purchase" ? "Purchased" : "Consumption"}
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-slate-700">
-                          Ending
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Course
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Trainer
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Performer
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                          Notes
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentTab.map((record, idx) => (
-                        <tr
-                          key={record.id}
-                          className={`border-b border-slate-200 ${
-                            idx % 2 === 0 ? "bg-white" : "bg-slate-50"
-                          } hover:bg-blue-50 transition`}
-                        >
-                          <td className="px-4 py-3 text-slate-600">
-                            {new Date(record.createdAt).toLocaleDateString(
-                              "en-PH"
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-slate-800">
-                            {record.beginningInventory ?? "—"}
-                          </td>
-                          <td className={`px-4 py-3 text-center font-semibold ${
-                            record.quantityChanged > 0
-                              ? "text-emerald-600"
-                              : "text-red-600"
-                          }`}>
-                            {Math.abs(record.quantityChanged)}
-                          </td>
-                          <td className="px-4 py-3 text-center font-semibold text-slate-800">
-                            {record.endingInventory ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.course || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.trainer || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.performedBy}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600 max-w-xs truncate">
-                            {record.description || record.notes || "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 

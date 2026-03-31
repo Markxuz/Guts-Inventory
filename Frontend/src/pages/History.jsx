@@ -25,6 +25,7 @@ const History = () => {
   const [logs, setLogs] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAction, setSelectedAction] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const { searchQuery } = useSearch()
 
@@ -55,15 +56,16 @@ const History = () => {
       logs.filter((log) => {
         const matchesSearch = log.itemName.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesAction = !selectedAction || log.actionType === selectedAction
-        return matchesSearch && matchesAction
+        const matchesDate = !selectedDate || new Date(log.createdAt).toLocaleDateString('en-CA') === selectedDate
+        return matchesSearch && matchesAction && matchesDate
       }),
-    [logs, searchQuery, selectedAction]
+    [logs, searchQuery, selectedAction, selectedDate]
   )
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedAction])
+  }, [searchQuery, selectedAction, selectedDate])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
@@ -78,10 +80,31 @@ const History = () => {
         <p className="mt-1 text-sm text-slate-600">Complete system activity history including all item movements, updates, and actions.</p>
       </div>
 
-      {/* Action Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-sm font-semibold text-slate-700">Filter by Action Type:</p>
-        <div className="flex flex-wrap gap-2">
+      {/* Filters */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+        {/* Date Filter */}
+        <div>
+          <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Date:</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate('')}
+              className="ml-2 text-xs text-red-600 hover:text-red-700 font-medium"
+            >
+              Clear Date
+            </button>
+          )}
+        </div>
+
+        {/* Action Type Filter */}
+        <div>
+          <p className="mb-3 text-sm font-semibold text-slate-700">Filter by Action Type:</p>
+          <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedAction('')}
             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
@@ -107,8 +130,7 @@ const History = () => {
                 {action}
               </button>
             )
-          })}
-        </div>
+          })}          </div>        </div>
       </div>
 
       {/* Print Button */}

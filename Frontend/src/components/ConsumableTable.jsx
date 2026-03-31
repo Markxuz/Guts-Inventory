@@ -6,6 +6,12 @@ const statusClassMap = {
 }
 
 const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = true }) => {
+  const handleRowClick = (item, e) => {
+    if (!e.target.closest('button')) {
+      onRowClick?.(item)
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--brand-secondary-soft)] bg-white">
       <div className="overflow-x-auto">
@@ -23,7 +29,7 @@ const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = t
             {items.map((item) => (
               <tr
                 key={item.id}
-                onClick={() => onRowClick?.(item)}
+                onClick={(e) => handleRowClick(item, e)}
                 className="cursor-pointer hover:bg-[#fce4e8]/40 transition"
               >
                 <td className="px-5 py-4 font-medium text-slate-700">{item.itemName}</td>

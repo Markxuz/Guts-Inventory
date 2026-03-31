@@ -3,29 +3,28 @@ const sequelize = require('../config/database');
 
 const Notification = sequelize.define('Notification', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     primaryKey: true,
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
-    comment: 'Admin user who receives the notification',
   },
   type: {
     type: DataTypes.ENUM('stock_added', 'stock_removed', 'consumable_added', 'report_printed'),
     allowNull: false,
   },
   message: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(500),
     allowNull: false,
   },
   staffName: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(150),
     allowNull: true,
   },
   consumableName: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(200),
     allowNull: true,
   },
   quantity: {
@@ -39,21 +38,12 @@ const Notification = sequelize.define('Notification', {
   metadata: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Additional data like item ID, action type, etc',
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
   },
 }, {
   tableName: 'notifications',
   timestamps: true,
+  underscored: true,
+  indexes: [],
 });
 
 module.exports = Notification;

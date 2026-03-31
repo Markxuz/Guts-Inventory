@@ -60,8 +60,7 @@ const User = sequelize.define('User', {
         user.password = await bcryptjs.hash(user.password, salt);
       }
     },
-  },
-});
+  },  indexes: [],});
 
 // Instance method to compare passwords
 User.prototype.comparePassword = async function (password) {

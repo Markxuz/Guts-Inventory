@@ -81,7 +81,7 @@ const start = async () => {
     console.log('✔  Database connection established.');
 
     // alter:true updates existing tables to match the current model without data loss.
-    // Switch to force:true only to completely reset schema during early development.
+    // Use force:true only to fix schema errors (will delete all data)
     await sequelize.sync({ alter: true });
     console.log('✔  Models synchronized.');
 

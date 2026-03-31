@@ -10,6 +10,10 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
   consumableId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
+    references: {
+      model: 'consumables',
+      key: 'id',
+    },
   },
   actionType: {
     type: DataTypes.ENUM('Stock In', 'Stock Out', 'Update', 'Archive'),
@@ -44,6 +48,11 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
     type: DataTypes.ENUM('Training', 'Assessment', 'Replenishment'),
     allowNull: true,
   },
+  location: {
+    type: DataTypes.ENUM('main', 'annex'),
+    allowNull: true,
+    defaultValue: 'main',
+  },
   performedBy: {
     type: DataTypes.STRING(100),
     allowNull: false,
@@ -54,6 +63,7 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
   timestamps: true,
   updatedAt: false,
   underscored: true,
+  indexes: [],
 });
 
 module.exports = InventoryHistory;

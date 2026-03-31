@@ -63,7 +63,7 @@ const LoginPage = () => {
                 GUTS Inventory
               </h1>
               <p className="text-white/80 text-sm mt-2">
-                The Vail Academy - TESDA Training Center
+                Guardians Technical School - TESDA Training Center
               </p>
             </div>
           </div>
@@ -150,7 +150,7 @@ const LoginPage = () => {
         {/* Bottom Text */}
         <div className="mt-6 text-center">
           <p className="text-sm text-slate-600">
-            Secure System © 2026 The Vail Academy
+            Secure System © 2026 GUTS.
           </p>
         </div>
       </div>

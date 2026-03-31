@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
 import { Boxes, PackageOpen, ShieldCheck, Wrench } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import Button from "../components/Button"
 import SummaryCard from "../components/SummaryCard"
 import ConsumableTable from "../components/ConsumableTable"
 import ConsumableModal from "../components/ConsumableModal"
 import { getDashboardInventory } from "../api/inventoryApi"
+import { getHistoryLogs } from "../api/historyApi"
 import { addConsumable, archiveConsumable, updateConsumable } from "../api/inventoryCrudApi"
 import { useSearch } from "../context/SearchContext"
 import { useNotifications } from "../context/NotificationContext"
+import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { normalizeItems, summarizeInventory } from "../utils/inventory"
 
 const trackIconMap = {
@@ -17,8 +20,11 @@ const trackIconMap = {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate()
+  const { selectedInventory } = useInventoryLocation()
   const [summary, setSummary] = useState({ totalsByTrack: [], grandTotal: 0 })
   const [allItems, setAllItems] = useState([])
+  const [allHistory, setAllHistory] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -27,20 +33,30 @@ const Dashboard = () => {
 
   const loadDashboard = async () => {
     setIsLoading(true)
-    const inventoryByTrack = await getDashboardInventory()
-    const combinedItems = [
-      ...(inventoryByTrack.eim || []),
-      ...(inventoryByTrack.smaw || []),
-      ...(inventoryByTrack.css || [])
-    ]
-    setSummary(summarizeInventory(inventoryByTrack))
-    setAllItems(normalizeItems(combinedItems))
-    setIsLoading(false)
+    try {
+      const inventoryByTrack = await getDashboardInventory(selectedInventory)
+      const combinedItems = [
+        ...(inventoryByTrack.eim || []),
+        ...(inventoryByTrack.smaw || []),
+        ...(inventoryByTrack.css || [])
+      ]
+      setSummary(summarizeInventory(inventoryByTrack))
+      setAllItems(normalizeItems(combinedItems))
+
+      // Load all history
+      const logs = await getHistoryLogs()
+      const filtered = (logs || [])
+        .filter(h => h.location === selectedInventory)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      setAllHistory(filtered)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   useEffect(() => {
     loadDashboard()
-  }, [])
+  }, [selectedInventory])
 
   // Listen for real-time stock updates
   useEffect(() => {
@@ -155,19 +171,17 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 print:grid-cols-1">
-            {/* Low Stock Alerts */}
-            <div className="space-y-3 h-[480px] flex flex-col">
-              <h3 className="font-title flex items-center gap-2 text-lg font-semibold text-slate-800">
-                <span className="h-5 w-1 rounded-full bg-[var(--brand-primary)]" />
-                Low Stock Alerts
-                {lowStockItems.length > 0 ? (
+          <div className={`grid gap-6 ${lowStockItems.length === 0 ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2'} print:grid-cols-1`}>
+            {/* Low Stock Alerts - Only show if there are items */}
+            {lowStockItems.length > 0 && (
+              <div className="space-y-3 h-[480px] flex flex-col">
+                <h3 className="font-title flex items-center gap-2 text-lg font-semibold text-slate-800">
+                  <span className="h-5 w-1 rounded-full bg-[var(--brand-primary)]" />
+                  Low Stock Alerts
                   <span className="ml-1 rounded-full bg-[#fbe9ed] px-2 py-0.5 text-xs font-semibold text-[#800000]">
                     {lowStockItems.length}
                   </span>
-                ) : null}
-              </h3>
-              {lowStockItems.length > 0 ? (
+                </h3>
                 <div className="flex-1 overflow-y-auto">
                   <ConsumableTable
                     items={lowStockItems}
@@ -175,15 +189,18 @@ const Dashboard = () => {
                     onArchive={handleArchive}
                   />
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-                  All consumables are currently healthy.
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Empty State for Low Stock - Show only when list is empty */}
+            {lowStockItems.length === 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 mb-6">
+                ✓ All consumables are currently healthy.
+              </div>
+            )}
 
             {/* High Stock Inventory */}
-            <div className="space-y-3 h-[480px] flex flex-col">
+            <div className={`space-y-3 ${lowStockItems.length === 0 ? '' : 'h-[480px]'} flex flex-col`}>
               <h3 className="font-title flex items-center gap-2 text-lg font-semibold text-slate-800">
                 <span className="h-5 w-1 rounded-full bg-emerald-500" />
                 High Stock Inventory
@@ -202,6 +219,70 @@ const Dashboard = () => {
               ) : (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                   No in-stock items found.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Activity Section */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-slate-100 bg-white px-6 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-1 rounded-full bg-[var(--brand-primary)]" />
+                <h3 className="font-title text-lg font-semibold text-slate-800">
+                  Recent Activity
+                </h3>
+                <span className="ml-2 rounded-full bg-[#fbe9ed] px-2 py-0.5 text-xs font-semibold text-[#800000]">
+                  Last 5
+                </span>
+              </div>
+            </div>
+
+            {/* Activity Table - Limited to 5 rows */}
+            <div className="overflow-x-auto select-none">
+              {allHistory.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-slate-500">
+                  <p>No activity available for {selectedInventory === 'main' ? 'Main' : 'Annex'} inventory</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm pointer-events-none select-none">
+                    <thead className="bg-[#f8eef0]">
+                      <tr>
+                        <th className="px-5 py-4 text-left font-semibold text-[var(--brand-primary)]">Item</th>
+                        <th className="px-5 py-4 text-left font-semibold text-[var(--brand-primary)]">Action</th>
+                        <th className="px-5 py-4 text-center font-semibold text-[var(--brand-primary)]">Qty Δ</th>
+                        <th className="px-5 py-4 text-left font-semibold text-[var(--brand-primary)]">Performed By</th>
+                        <th className="px-5 py-4 text-left font-semibold text-[var(--brand-primary)]">Description</th>
+                        <th className="px-5 py-4 text-left font-semibold text-[var(--brand-primary)]">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {allHistory.slice(0, 5).map((record) => (
+                        <tr key={record.id} className="hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-medium text-slate-700">{record.itemName}</td>
+                          <td className="px-5 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${
+                                record.actionType === "Stock In" ? "bg-emerald-50 text-emerald-700" :
+                                record.actionType === "Stock Out" ? "bg-rose-50 text-rose-700" :
+                                record.actionType === "Update" ? "bg-blue-50 text-blue-700" :
+                                "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {record.actionType}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-center text-slate-700">{record.quantityChanged}</td>
+                          <td className="px-5 py-4 text-slate-700">{record.performedBy || "System"}</td>
+                          <td className="px-5 py-4 text-slate-600">{record.description || "—"}</td>
+                          <td className="px-5 py-4 text-slate-600">
+                            {new Date(record.createdAt).toLocaleString("en-PH")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

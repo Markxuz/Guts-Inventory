@@ -52,7 +52,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
           />
         </div>
         <p className={`mt-4 text-center text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition-all duration-300 ${isCollapsed ? "max-h-0 opacity-0" : "max-h-10 opacity-100"}`}>
-          GUTS Inventory System
+          GUTS CONSUMABLE MONITORING SYSTEM
         </p>
       </div>
 

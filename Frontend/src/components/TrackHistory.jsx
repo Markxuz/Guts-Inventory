@@ -16,6 +16,7 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState("")
   const [selectedAction, setSelectedAction] = useState("All")
+  const [selectedDate, setSelectedDate] = useState("")
 
   useEffect(() => {
     const load = async () => {
@@ -43,8 +44,9 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
     () =>
       logs
         .filter((log) => (selectedItemId ? String(log.consumableId) === selectedItemId : true))
-        .filter((log) => (selectedAction !== "All" ? log.actionType === selectedAction : true)),
-    [logs, selectedItemId, selectedAction]
+        .filter((log) => (selectedAction !== "All" ? log.actionType === selectedAction : true))
+        .filter((log) => !selectedDate || new Date(log.createdAt).toLocaleDateString('en-CA') === selectedDate),
+    [logs, selectedItemId, selectedAction, selectedDate]
   )
 
   return (
@@ -73,6 +75,27 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
           {/* Filter bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
             <div className="flex flex-wrap items-center gap-3">
+              {/* Date selector */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] ${
+                    selectedDate ? 'border-[var(--brand-primary)] bg-[#fff6f7]' : 'border-slate-200 bg-white'
+                  }`}
+                  title="Filter by date"
+                />
+                {selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate('')}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium px-2 py-1 hover:bg-red-50 rounded"
+                  >
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+
               {/* Item selector */}
               <select
                 value={selectedItemId}
@@ -114,9 +137,22 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
           </div>
 
           {/* Active filter summary badge */}
-          {(selectedItemId || selectedAction !== "All") && (
+          {(selectedItemId || selectedAction !== "All" || selectedDate) && (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
               <span className="text-xs text-slate-500">Filtering:</span>
+              {selectedDate && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-0.5 text-xs font-semibold text-blue-700">
+                  📅 {new Date(selectedDate).toLocaleDateString('en-PH')}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate("")}
+                    className="ml-1 text-blue-600 hover:text-blue-700"
+                    aria-label="Clear date filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
               {selectedItemId && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#fbe9ed] px-3 py-0.5 text-xs font-semibold text-[#800000]">
                   {inventoryItems.find((i) => String(i.id) === selectedItemId)?.itemName ?? "Item"}

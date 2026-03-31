@@ -26,8 +26,39 @@ body {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 0.3in 0.3in 0.3in 0.3in;
+  }
+
   body {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  section, main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .space-y-6 {
+    margin: 0 !important;
+    gap: 8px !important;
+  }
+
+  .space-y-3 {
+    margin: 0 !important;
+    gap: 4px !important;
+  }
+
+  h2, h3 {
+    margin: 4px 0 2px 0 !important;
+  }
+
+  p {
+    margin: 0 !important;
+    font-size: 11px !important;
   }
 
   .overflow-x-auto {
@@ -37,9 +68,61 @@ body {
   table {
     width: 100% !important;
     min-width: unset !important;
+    margin: 4px 0 !important;
+    font-size: 11px !important;
+  }
+
+  th, td {
+    padding: 3px 4px !important;
+  }
+
+  .grid {
+    gap: 6px !important;
+  }
+
+  .rounded-2xl {
+    margin: 0 !important;
+    padding: 6px !important;
+    border-radius: 4px !important;
+  }
+
+  .p-4, .p-6 {
+    padding: 6px !important;
+  }
+
+  .px-5, .px-6 {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .py-4 {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
   }
 
   * {
     box-shadow: none !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Hide pagination and filter controls */
+  button {
+    display: none !important;
+  }
+
+  /* Reduce heading sizes */
+  .text-2xl {
+    font-size: 16px !important;
+  }
+
+  .text-lg {
+    font-size: 12px !important;
+  }
+
+  .text-sm {
+    font-size: 10px !important;
   }
 }

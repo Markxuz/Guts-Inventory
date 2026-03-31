@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import { useAuth } from "./context/AuthContext"
+import { InventoryLocationProvider } from "./context/InventoryLocationContext"
 import LoginPage from "./pages/LoginPage"
 import MainLayout from "./layouts/MainLayout"
 import Dashboard from "./pages/Dashboard"
@@ -7,7 +8,9 @@ import EIM from "./pages/EIM"
 import SMAW from "./pages/SMAW"
 import CSS from "./pages/CSS"
 import History from "./pages/History"
+import HistoryPage from "./pages/HistoryPage"
 import Archive from "./pages/Archive"
+import ItemDetailPage from "./pages/ItemDetailPage"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 const App = () => {
@@ -25,35 +28,39 @@ const App = () => {
   }
 
   return (
-    <Routes>
-      {/* Login Route */}
-      <Route path="/login" element={
-        isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
-      } />
+    <InventoryLocationProvider>
+      <Routes>
+        {/* Login Route */}
+        <Route path="/login" element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
+        } />
 
-      {/* Protected Routes */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/eim" element={<EIM />} />
-        <Route path="/smaw" element={<SMAW />} />
-        <Route path="/css" element={<CSS />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/archive" element={<Archive />} />
-      </Route>
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/eim" element={<EIM />} />
+          <Route path="/smaw" element={<SMAW />} />
+          <Route path="/css" element={<CSS />} />
+          <Route path="/inventory/:track/:itemId" element={<ItemDetailPage />} />
+          <Route path="/history/:track/:itemId" element={<HistoryPage />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/archive" element={<Archive />} />
+        </Route>
 
-      {/* Fallback - redirect to login or dashboard */}
-      <Route path="*" element={
-        isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-      } />
-    </Routes>
+        {/* Fallback - redirect to login or dashboard */}
+        <Route path="*" element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+        } />
+      </Routes>
+    </InventoryLocationProvider>
   )
 }
 

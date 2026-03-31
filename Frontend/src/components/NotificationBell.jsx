@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, X, Check, Trash2 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { useInventoryLocation } from '../context/InventoryLocationContext';
 
 const NotificationBell = () => {
+  const navigate = useNavigate();
+  const { handleInventoryChange } = useInventoryLocation();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -65,6 +69,22 @@ const NotificationBell = () => {
     return notifDate.toLocaleDateString();
   };
 
+  const handleNotificationClick = async (notif) => {
+    // Mark as read
+    if (!notif.isRead) {
+      await markAsRead(notif.id);
+    }
+
+    // Navigate to item if metadata contains itemId and track
+    if (notif.metadata && notif.metadata.itemId && notif.metadata.track) {
+      // Set inventory location to main
+      handleInventoryChange('main');
+      setIsOpen(false);
+      // Navigate to item
+      navigate(`/inventory/${notif.metadata.track}/${notif.metadata.itemId}`);
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Bell Icon Button */}
@@ -111,7 +131,8 @@ const NotificationBell = () => {
                 {notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`border-l-4 border-l-gray-300 p-3 flex gap-3 hover:bg-gray-50 transition ${
+                    onClick={() => handleNotificationClick(notif)}
+                    className={`border-l-4 border-l-gray-300 p-3 flex gap-3 cursor-pointer hover:bg-gray-100 transition ${
                       getNotificationColor(notif.type)
                     } ${!notif.isRead ? 'font-medium' : 'opacity-75'}`}
                   >
@@ -129,7 +150,7 @@ const NotificationBell = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {!notif.isRead && (
                         <button
                           onClick={() => markAsRead(notif.id)}

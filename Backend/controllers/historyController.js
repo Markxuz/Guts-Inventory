@@ -63,6 +63,7 @@ const getHistory = async (req, res) => {
         trainer: plain.trainer || '',
         purpose: plain.purpose || '',
         performedBy: plain.performedBy || 'System',
+        location: plain.location || 'main',
         createdAt: plain.createdAt,
       };
     });

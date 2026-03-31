@@ -80,6 +80,8 @@ const sendNotificationToAdmins = async (req, notificationType, message, staffNam
           staffName,
           consumableName,
           quantity,
+          metadata,
+          isRead: false,
           createdAt: notification.createdAt,
         });
       }
@@ -92,21 +94,32 @@ const sendNotificationToAdmins = async (req, notificationType, message, staffNam
 /**
  * Strips timestamps and returns only the fields the frontend needs.
  * Guarantees the shape: { id, itemName, category, quantity, unit, reorderLevel }
+ * location: 'main' | 'annex' determines which location's quantity to return
  */
-const formatItem = (instance) => {
-  const { id, itemName, category, quantity, unit, reorderLevel } = instance.get({ plain: true });
-  return { id, itemName, category, quantity, unit, reorderLevel };
+const formatItem = (instance, location = 'main') => {
+  const plain = instance.get({ plain: true });
+  const quantityField = location === 'main' ? plain.quantityMain : plain.quantityAnnex;
+  return { 
+    id: plain.id, 
+    itemName: plain.itemName, 
+    category: plain.category, 
+    quantity: quantityField !== undefined ? quantityField : plain.quantity,
+    unit: plain.unit, 
+    reorderLevel: plain.reorderLevel 
+  };
 };
 
 const parsePayload = ({ itemName, category, quantity, unit, reorderLevel }) => ({
   itemName: String(itemName).trim(),
   category: String(category).toUpperCase(),
   quantity: quantity !== undefined ? parseInt(quantity, 10) : 0,
+  quantityMain: quantity !== undefined ? parseInt(quantity, 10) : 0,
+  quantityAnnex: 0,
   unit: String(unit).trim(),
   reorderLevel: reorderLevel !== undefined ? parseInt(reorderLevel, 10) : 10,
 });
 
-const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose }) => {
+const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose, location }) => {
   await InventoryHistory.create({
     consumableId,
     actionType,
@@ -118,6 +131,7 @@ const logHistory = async ({ consumableId, actionType, quantityChanged, descripti
     course: course || null,
     trainer: trainer || null,
     purpose: purpose || null,
+    location: location || 'main',
   });
 };
 
@@ -127,6 +141,7 @@ const logHistory = async ({ consumableId, actionType, quantityChanged, descripti
 const getInventory = async (req, res) => {
   const queryCategory = req.query.category?.toUpperCase();
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
+  const location = req.query.location || 'main';
 
   if (queryCategory && !VALID_CATEGORIES.includes(queryCategory)) {
     return res.status(400).json({
@@ -143,14 +158,14 @@ const getInventory = async (req, res) => {
     const rows = await Consumable.findAll({ where, order: [['itemName', 'ASC']] });
 
     if (queryCategory) {
-      return res.json({ items: rows.map(formatItem) });
+      return res.json({ items: rows.map(row => formatItem(row, location)) });
     }
 
     const tracks = { eim: [], smaw: [], css: [] };
     for (const row of rows) {
       const key = row.category.toLowerCase();
       if (Object.prototype.hasOwnProperty.call(tracks, key)) {
-        tracks[key].push(formatItem(row));
+        tracks[key].push(formatItem(row, location));
       }
     }
 
@@ -168,6 +183,7 @@ const getInventory = async (req, res) => {
 const getInventoryByCategory = async (req, res) => {
   const upperCategory = req.params.category.toUpperCase();
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
+  const location = req.query.location || 'main';
 
   if (!VALID_CATEGORIES.includes(upperCategory)) {
     return res.status(400).json({
@@ -181,7 +197,7 @@ const getInventoryByCategory = async (req, res) => {
       order: [['itemName', 'ASC']],
     });
 
-    return res.json({ items: rows.map(formatItem) });
+    return res.json({ items: rows.map(row => formatItem(row, location)) });
   } catch (err) {
     console.error('[getInventoryByCategory]', err);
     return res.status(500).json({ error: 'Failed to fetch inventory.' });
@@ -224,6 +240,7 @@ const addConsumable = async (req, res) => {
 
     // Send notification to admins
     const staffName = req.body.performedBy || req.user?.username || 'Staff';
+    const trackName = upperCategory.toLowerCase();
     await sendNotificationToAdmins(
       req,
       'consumable_added',
@@ -231,7 +248,7 @@ const addConsumable = async (req, res) => {
       staffName,
       itemName,
       quantity,
-      { itemId: item.id, category: upperCategory }
+      { itemId: item.id, track: trackName, category: upperCategory }
     );
 
     return res.status(201).json(formatItem(item));
@@ -333,19 +350,27 @@ const updateStock = async (req, res) => {
       return res.status(404).json({ error: 'Consumable not found.' });
     }
 
-    const beginningQty = item.quantity;
+    const currentLocation = req.body.location || 'main';
+    const oppositeLocation = currentLocation === 'main' ? 'annex' : 'main';
+    
+    // Get the location-specific quantity fields
+    const quantityField = currentLocation === 'main' ? 'quantityMain' : 'quantityAnnex';
+    const oppositeQuantityField = oppositeLocation === 'main' ? 'quantityMain' : 'quantityAnnex';
+    
+    const beginningQty = item[quantityField];
     const newQuantity =
-      type === 'in' ? item.quantity + parsedAmount : item.quantity - parsedAmount;
+      type === 'in' ? item[quantityField] + parsedAmount : item[quantityField] - parsedAmount;
 
     if (newQuantity < 0) {
       return res.status(400).json({
-        error: `Insufficient stock. Cannot deduct ${parsedAmount} from current quantity of ${item.quantity}.`,
+        error: `Insufficient stock. Cannot deduct ${parsedAmount} from current quantity of ${item[quantityField]}.`,
       });
     }
 
-    item.quantity = newQuantity;
-    await item.save();
+    // Update current location's quantity
+    item[quantityField] = newQuantity;
 
+    // Log history for the current location
     await logHistory({
       consumableId: item.id,
       actionType: type === 'in' ? 'Stock In' : 'Stock Out',
@@ -357,11 +382,40 @@ const updateStock = async (req, res) => {
       course: req.body.course || null,
       trainer: req.body.trainer || null,
       purpose: req.body.purpose || null,
+      location: currentLocation,
     });
+
+    // If this is a stock OUT (consumption/deduction), automatically transfer to the opposite location
+    if (type === 'out') {
+      // Get opposite location's beginning inventory (before the transfer)
+      const oppositeBeginningQty = item[oppositeQuantityField];
+      
+      // Increase the opposite location's stock by the deducted amount
+      item[oppositeQuantityField] = oppositeBeginningQty + parsedAmount;
+      
+      // Record the stock IN for the opposite location with proper inventory levels
+      await logHistory({
+        consumableId: item.id,
+        actionType: 'Stock In',
+        quantityChanged: parsedAmount,
+        description: req.body.description ? `Transfer from ${currentLocation}: ${req.body.description}` : `Transfer from ${currentLocation}`,
+        performedBy: req.body.performedBy,
+        beginningInventory: oppositeBeginningQty,
+        endingInventory: oppositeBeginningQty + parsedAmount,
+        course: req.body.course || null,
+        trainer: req.body.trainer || null,
+        purpose: req.body.purpose || null,
+        location: oppositeLocation,
+      });
+    }
+
+    // Save the item with updated quantities
+    await item.save();
 
     // Send notification to admins
     const staffName = req.body.performedBy || req.user?.username || 'Staff';
     const actionText = type === 'in' ? 'added' : 'deducted';
+    const trackName = item.category.toLowerCase();
     await sendNotificationToAdmins(
       req,
       type === 'in' ? 'stock_added' : 'stock_removed',
@@ -369,7 +423,7 @@ const updateStock = async (req, res) => {
       staffName,
       item.itemName,
       parsedAmount,
-      { itemId: item.id, type, beginningQty, newQuantity }
+      { itemId: item.id, track: trackName, type, beginningQty, newQuantity }
     );
 
     // Broadcast stock update to all connected clients via Socket.IO
@@ -379,7 +433,7 @@ const updateStock = async (req, res) => {
         id: item.id,
         itemName: item.itemName,
         category: item.category,
-        quantity: item.quantity,
+        quantity: newQuantity,
         unit: item.unit,
         reorderLevel: item.reorderLevel,
         actionType: type === 'in' ? 'Stock In' : 'Stock Out',
@@ -389,7 +443,7 @@ const updateStock = async (req, res) => {
       });
     }
 
-    return res.json(formatItem(item));
+    return res.json(formatItem(item, currentLocation));
   } catch (err) {
     console.error('[updateStock]', err);
     return res.status(500).json({ error: 'Failed to update stock.' });

@@ -32,6 +32,22 @@ const Consumable = sequelize.define('Consumable', {
       min: { args: [0], msg: 'quantity cannot be negative.' },
     },
   },
+  quantityMain: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: { args: [0], msg: 'quantityMain cannot be negative.' },
+    },
+  },
+  quantityAnnex: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: { args: [0], msg: 'quantityAnnex cannot be negative.' },
+    },
+  },
   unit: {
     type: DataTypes.STRING(50),
     allowNull: false,
@@ -59,6 +75,7 @@ const Consumable = sequelize.define('Consumable', {
   // itemName → item_name, reorderLevel → reorder_level
   // toJSON() still returns camelCase keys.
   underscored: true,
+  indexes: [],
 });
 
 module.exports = Consumable;

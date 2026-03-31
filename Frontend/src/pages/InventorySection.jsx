@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import Button from "../components/Button"
 import ConsumableTable from "../components/ConsumableTable"
 import ConsumableModal from "../components/ConsumableModal"
-import ComprehensiveItemModal from "../components/ComprehensiveItemModal"
 import TrackHistory from "../components/TrackHistory"
 import { getInventoryByTrack } from "../api/inventoryApi"
-import { addConsumable, archiveConsumable, updateConsumable, updateStock } from "../api/inventoryCrudApi"
+import { addConsumable, archiveConsumable, updateConsumable } from "../api/inventoryCrudApi"
 import { getHistoryLogs } from "../api/historyApi"
 import { useSearch } from "../context/SearchContext"
 import { useNotifications } from "../context/NotificationContext"
+import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { normalizeItems } from "../utils/inventory"
 
 const InventorySection = ({ title, description, track }) => {
@@ -16,37 +17,26 @@ const InventorySection = ({ title, description, track }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
-  const [selectedItem, setSelectedItem] = useState(null)
-  const [itemHistory, setItemHistory] = useState([])
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const { searchQuery } = useSearch()
   const { setOnStockUpdate } = useNotifications()
+  const { selectedInventory } = useInventoryLocation()
+  const navigate = useNavigate()
 
   const loadItems = async () => {
     setIsLoading(true)
-    const inventory = await getInventoryByTrack(track)
+    const inventory = await getInventoryByTrack(track, selectedInventory)
     setItems(normalizeItems(inventory))
     setIsLoading(false)
   }
 
-  // Fetch history when item is selected
-  const handleSelectItem = async (item) => {
-    setSelectedItem(item)
-    setIsLoadingHistory(true)
-    try {
-      const logs = await getHistoryLogs({ itemId: item.id })
-      setItemHistory(logs || [])
-    } catch (error) {
-      console.error("Failed to fetch item history", error)
-      setItemHistory([])
-    } finally {
-      setIsLoadingHistory(false)
-    }
+  // Navigate to item detail page when row is clicked
+  const handleSelectItem = (item) => {
+    navigate(`/inventory/${track}/${item.id}`)
   }
 
   useEffect(() => {
     loadItems()
-  }, [track])
+  }, [track, selectedInventory])
 
   // Listen for real-time stock updates
   useEffect(() => {
@@ -57,10 +47,6 @@ const InventorySection = ({ title, description, track }) => {
           item.id === data.id ? { ...item, quantity: data.quantity } : item
         )
       )
-      // Update selected item if it was modified
-      if (selectedItem && selectedItem.id === data.id) {
-        setSelectedItem(prev => ({ ...prev, quantity: data.quantity }))
-      }
     }
     
     setOnStockUpdate(() => handleStockUpdate)
@@ -68,7 +54,7 @@ const InventorySection = ({ title, description, track }) => {
     return () => {
       setOnStockUpdate(null)
     }
-  }, [selectedItem, setOnStockUpdate])
+  }, [setOnStockUpdate])
 
   const filteredItems = items.filter((item) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -110,50 +96,6 @@ const InventorySection = ({ title, description, track }) => {
       await loadItems()
     } catch (error) {
       alert(error.response?.data?.error || "Failed to archive item.")
-    }
-  }
-
-  const handleAddStock = async (formData) => {
-    if (!selectedItem) return
-    
-    try {
-      await updateStock(selectedItem.id, {
-        type: "in",
-        amount: parseInt(formData.quantity, 10),
-        description: formData.notes,
-        performedBy: formData.performedBy,
-        course: formData.course,
-        trainer: formData.trainer,
-        purpose: formData.purpose,
-      })
-      setSelectedItem(null)
-      setItemHistory([])
-      await loadItems()
-      alert("Stock added successfully!")
-    } catch (error) {
-      alert(error.response?.data?.error || "Failed to add stock.")
-    }
-  }
-
-  const handleDeductStock = async (formData) => {
-    if (!selectedItem) return
-    
-    try {
-      await updateStock(selectedItem.id, {
-        type: "out",
-        amount: parseInt(formData.quantity, 10),
-        description: formData.notes,
-        performedBy: formData.performedBy,
-        course: formData.course,
-        trainer: formData.trainer,
-        purpose: formData.purpose,
-      })
-      setSelectedItem(null)
-      setItemHistory([])
-      await loadItems()
-      alert("Stock deducted successfully!")
-    } catch (error) {
-      alert(error.response?.data?.error || "Failed to deduct stock.")
     }
   }
 
@@ -212,18 +154,6 @@ const InventorySection = ({ title, description, track }) => {
         onSubmit={handleAdd}
         initialValues={{ category: track.toUpperCase() }}
         lockCategory
-      />
-
-      <ComprehensiveItemModal
-        isOpen={!!selectedItem && !isLoadingHistory}
-        item={selectedItem}
-        itemHistory={itemHistory}
-        onClose={() => {
-          setSelectedItem(null)
-          setItemHistory([])
-        }}
-        onAddStock={handleAddStock}
-        onDeductStock={handleDeductStock}
       />
 
       <ConsumableModal
