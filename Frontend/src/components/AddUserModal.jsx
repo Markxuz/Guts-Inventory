@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, User, Mail, Lock, UserCog } from 'lucide-react'
 import Button from './Button'
-import { createUser } from '../api/authApi'
+import { createUser, updateUser } from '../api/authApi'
 
-const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
+const AddUserModal = ({ isOpen, onClose, onSuccess, editingUser = null }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -13,6 +13,29 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isEditMode = !!editingUser
+
+  // Initialize form with editing user data
+  useEffect(() => {
+    if (isEditMode && editingUser) {
+      setFormData({
+        username: editingUser.username || '',
+        email: editingUser.email || '',
+        password: '',
+        fullName: editingUser.fullName || '',
+        role: editingUser.role || 'staff'
+      })
+    } else {
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        fullName: '',
+        role: 'staff'
+      })
+    }
+    setErrors({})
+  }, [isEditMode, editingUser, isOpen])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -31,10 +54,20 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
     }
-    if (!formData.password.trim()) newErrors.password = 'Password is required'
-    else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    
+    if (isEditMode) {
+      // In edit mode, password is optional
+      if (formData.password && formData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters'
+      }
+    } else {
+      // In add mode, password is required
+      if (!formData.password.trim()) newErrors.password = 'Password is required'
+      else if (formData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters'
+      }
     }
+    
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required'
     
     setErrors(newErrors)
@@ -48,25 +81,56 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
 
     setIsSubmitting(true)
     try {
-      await createUser(formData)
-      
-      // Reset form
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        fullName: '',
-        role: 'staff'
-      })
-      setErrors({})
-      
-      // Close modal and show success
-      onClose()
-      if (onSuccess) {
-        onSuccess(formData.fullName, formData.role)
+      if (isEditMode) {
+        // Prepare update data - only include changed fields
+        const updateData = {
+          username: formData.username,
+          email: formData.email,
+          fullName: formData.fullName,
+          role: formData.role
+        }
+        // Only include password if it was changed
+        if (formData.password) {
+          updateData.password = formData.password
+        }
+
+        await updateUser(editingUser.id, updateData)
+        
+        // Close modal and show success
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          fullName: '',
+          role: 'staff'
+        })
+        setErrors({})
+        onClose()
+        if (onSuccess) {
+          onSuccess(formData.fullName, formData.role, 'User updated')
+        }
+      } else {
+        // Create new user
+        await createUser(formData)
+        
+        // Reset form
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          fullName: '',
+          role: 'staff'
+        })
+        setErrors({})
+        
+        // Close modal and show success
+        onClose()
+        if (onSuccess) {
+          onSuccess(formData.fullName, formData.role)
+        }
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 'Failed to create user'
+      const errorMsg = error.response?.data?.error || `Failed to ${isEditMode ? 'update' : 'create'} user`
       if (errorMsg.includes('already exists')) {
         setErrors({ submit: 'Username or email already exists' })
       } else {
@@ -86,7 +150,7 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="flex items-center gap-2 font-title text-lg font-bold text-slate-800">
             <UserCog className="h-5 w-5 text-[var(--brand-primary)]" />
-            Add New User
+            {isEditMode ? 'Edit User' : 'Add New User'}
           </h2>
           <button
             onClick={onClose}
@@ -177,14 +241,15 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
           <div>
             <label className="block text-sm font-bold text-slate-900 mb-2">
               <Lock className="inline h-4 w-4 mr-1" />
-              Password <span className="text-red-500">*</span>
+              Password {!isEditMode && <span className="text-red-500">*</span>}
+              {isEditMode && <span className="text-slate-500 font-normal">(leave blank to keep current)</span>}
             </label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Min. 6 characters"
+              placeholder={isEditMode ? 'Leave blank to keep current password' : 'Min. 6 characters'}
               className={`w-full rounded-lg border px-4 py-2.5 text-sm text-slate-900 placeholder-slate-500 transition-colors focus:outline-none focus:ring-2 ${
                 errors.password
                   ? 'border-red-300 focus:ring-red-200'
@@ -213,14 +278,14 @@ const AddUserModal = ({ isOpen, onClose, onSuccess }) => {
             </select>
           </div>
 
-          {/* Add User Button */}
+          {/* Submit Button */}
           <div className="pt-4">
             <Button
               className="w-full bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? 'Creating...' : 'Add User'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update User' : 'Add User')}
             </Button>
           </div>
         </form>

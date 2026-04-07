@@ -9,7 +9,9 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const trainerRoutes = require('./routes/trainerRoutes');
 const User = require('./models/User');
+const Trainer = require('./models/Trainer');
 
 const app = express();
 const server = http.createServer(app);
@@ -64,6 +66,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api', trainerRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -79,11 +82,6 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     console.log('✔  Database connection established.');
-
-    // alter:true updates existing tables to match the current model without data loss.
-    // Use force:true only to fix schema errors (will delete all data)
-    await sequelize.sync({ alter: true });
-    console.log('✔  Models synchronized.');
 
     server.listen(PORT, () => {
       console.log(`✔  Server running → http://localhost:${PORT}`);

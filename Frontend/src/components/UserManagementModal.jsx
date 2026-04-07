@@ -1,0 +1,184 @@
+import { useState, useEffect } from 'react'
+import { X, Trash2, Edit2, Plus } from 'lucide-react'
+import Button from './Button'
+import AddUserModal from './AddUserModal'
+import { getUsers, deleteUser } from '../api/authApi'
+
+const UserManagementModal = ({ isOpen, onClose }) => {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchUsers()
+    }
+  }, [isOpen])
+
+  const fetchUsers = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getUsers()
+      setUsers(data.users || [])
+    } catch (err) {
+      setError('Failed to load users. Please try again.')
+      console.error('Error fetching users:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddUser = () => {
+    setEditingUser(null)
+    setIsAddUserOpen(true)
+  }
+
+  const handleEditUser = (user) => {
+    setEditingUser(user)
+    setIsAddUserOpen(true)
+  }
+
+  const handleAddUserSuccess = (fullName, role, action = 'User created') => {
+    setTimeout(() => {
+      alert(`✓ ${action} successfully!`)
+      fetchUsers()
+    }, 500)
+  }
+
+  const handleDeleteUser = async (userId, userName) => {
+    if (window.confirm(`Are you sure you want to deactivate user "${userName}"? This action cannot be undone.`)) {
+      try {
+        await deleteUser(userId)
+        alert(`✓ User "${userName}" has been deactivated.`)
+        fetchUsers()
+      } catch (err) {
+        const errorMsg = err.response?.data?.error || 'Failed to delete user'
+        alert(`✗ Error: ${errorMsg}`)
+      }
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-4xl rounded-2xl bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+            <h2 className="font-title text-lg font-bold text-slate-800">
+              User Management
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button
+                className="flex items-center gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-strong)]"
+                onClick={handleAddUser}
+              >
+                <Plus className="h-4 w-4" />
+                Add User
+              </Button>
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="text-center py-8 text-slate-600">Loading users...</div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-slate-600">No users found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">Full Name</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">Username</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">Email</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">Role</th>
+                      <th className="px-4 py-3 text-center font-semibold text-slate-700">Status</th>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-slate-900 font-medium">{user.fullName}</td>
+                        <td className="px-4 py-3 text-slate-600">{user.username}</td>
+                        <td className="px-4 py-3 text-slate-600">{user.email}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            user.role === 'admin'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            user.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {user.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit user"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.fullName)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Deactivate user"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add/Edit User Modal */}
+      <AddUserModal
+        isOpen={isAddUserOpen}
+        onClose={() => {
+          setIsAddUserOpen(false)
+          setEditingUser(null)
+        }}
+        onSuccess={handleAddUserSuccess}
+        editingUser={editingUser}
+      />
+    </>
+  )
+}
+
+export default UserManagementModal

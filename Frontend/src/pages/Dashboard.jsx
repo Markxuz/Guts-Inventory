@@ -108,7 +108,7 @@ const Dashboard = () => {
 
   const handleAdd = async (payload) => {
     try {
-      await addConsumable(payload)
+      await addConsumable({ ...payload, location: selectedInventory })
       setIsAddOpen(false)
       await loadDashboard()
     } catch (error) {

@@ -1,5 +1,9 @@
 const sequelize = require('./config/database');
 const User = require('./models/User');
+const Trainer = require('./models/Trainer');
+const Consumable = require('./models/Consumable');
+const InventoryHistory = require('./models/InventoryHistory');
+const Notification = require('./models/Notification');
 
 const initializeAdminUser = async () => {
   try {

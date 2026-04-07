@@ -7,17 +7,20 @@ import { getHistoryLogs } from "../api/historyApi"
 import { updateStock } from "../api/inventoryCrudApi"
 import { normalizeItems } from "../utils/inventory"
 import { useInventoryLocation } from "../context/InventoryLocationContext"
+import { useAuth } from "../context/AuthContext"
 import ComprehensiveItemModal from "../components/ComprehensiveItemModal"
 
 const ItemDetailPage = () => {
   const { track, itemId } = useParams()
   const navigate = useNavigate()
   const { selectedInventory } = useInventoryLocation()
+  const { user } = useAuth()
   const [item, setItem] = useState(null)
   const [itemHistory, setItemHistory] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalAction, setModalAction] = useState(null) // "add" or "deduct"
+  const [purposeFilter, setPurposeFilter] = useState('All')
 
   useEffect(() => {
     const loadItemDetails = async () => {
@@ -28,11 +31,11 @@ const ItemDetailPage = () => {
         const items = normalizeItems(inventory)
         
         // Find the specific item
-        const selectedItem = items.find(i => i.id === parseInt(itemId))
+        const selectedItem = items.find(i => String(i.id) === String(itemId))
         setItem(selectedItem)
 
         // Fetch history for this item
-        const logs = await getHistoryLogs({ itemId: parseInt(itemId) })
+        const logs = await getHistoryLogs({ itemId })
         setItemHistory(logs || [])
       } catch (error) {
         console.error("Failed to load item details:", error)
@@ -52,7 +55,6 @@ const ItemDetailPage = () => {
         type: "in",
         amount: parseInt(formData.quantity, 10),
         description: formData.notes,
-        performedBy: formData.performedBy,
         course: formData.course,
         trainer: formData.trainer,
         purpose: formData.purpose,
@@ -84,7 +86,6 @@ const ItemDetailPage = () => {
         type: "out",
         amount: parseInt(formData.quantity, 10),
         description: formData.notes,
-        performedBy: formData.performedBy,
         course: formData.course,
         trainer: formData.trainer,
         purpose: formData.purpose,
@@ -116,6 +117,15 @@ const ItemDetailPage = () => {
   const closeModal = () => {
     setIsModalOpen(false)
     setModalAction(null)
+  }
+
+  // Filter history by purpose
+  const filteredHistory = purposeFilter === 'All'
+    ? itemHistory
+    : itemHistory.filter(h => h.purpose === purposeFilter)
+  
+  const handlePurposeChange = (newPurpose) => {
+    setPurposeFilter(newPurpose)
   }
 
   if (isLoading) {
@@ -153,7 +163,11 @@ const ItemDetailPage = () => {
     h.actionType === "Stock Out" && h.location === selectedInventory
   ) || []
   const allHistory = [...itemHistory].filter(h => h.location === selectedInventory).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const recentHistory = allHistory.slice(0, 5)
+  const filteredByAction = allHistory
+  const filteredByPurpose = purposeFilter === 'All'
+    ? filteredByAction
+    : filteredByAction.filter(h => h.purpose === purposeFilter)
+  const recentHistory = filteredByPurpose.slice(0, 5)
 
   return (
     <div className="space-y-6">
@@ -207,14 +221,14 @@ const ItemDetailPage = () => {
           onClick={() => openModal("add")}
           className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 text-left transition hover:border-emerald-400 hover:bg-emerald-100"
         >
-          <h3 className="text-lg font-bold text-emerald-700 mb-2">+ Add Stock</h3>
+          <h3 className="text-lg font-bold text-emerald-700 mb-2"> Add Stock</h3>
           <p className="text-sm text-emerald-600">Increase inventory quantity</p>
         </button>
         <button
           onClick={() => openModal("deduct")}
           className="rounded-2xl border-2 border-red-200 bg-red-50 p-6 text-left transition hover:border-red-400 hover:bg-red-100"
         >
-          <h3 className="text-lg font-bold text-red-700 mb-2">- Deduct Stock</h3>
+          <h3 className="text-lg font-bold text-red-700 mb-2"> Deduct Stock</h3>
           <p className="text-sm text-red-600">Decrease inventory quantity</p>
         </button>
       </div>
@@ -227,7 +241,7 @@ const ItemDetailPage = () => {
           className="w-full px-6 py-4 bg-slate-50 border-b border-slate-200 text-left hover:bg-slate-100 transition"
         >
           <h2 className="text-lg font-semibold text-[#800000] cursor-pointer hover:underline">
-            History ({allHistory.length}) →
+            History ({allHistory.length}) 
           </h2>
           <p className="text-xs text-slate-500 mt-1">Click to view full history with pagination</p>
         </button>
@@ -244,11 +258,43 @@ const ItemDetailPage = () => {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Inventory Date</th>
                   <th className="px-4 py-3 text-center font-semibold text-[#800000]">Beginning Inv.</th>
-                  <th className="px-4 py-3 text-center font-semibold text-[#800000]">{selectedInventory === "annex" ? "Replenish" : "Purchase"}</th>
+                  <th className="px-4 py-3 text-center font-semibold text-[#800000]">{selectedInventory === "annex" ? "Replenishment" : "Purchase"}</th>
                   <th className="px-4 py-3 text-center font-semibold text-[#800000]">Stock-on-hand</th>
                   <th className="px-4 py-3 text-center font-semibold text-[#800000]">Consumption</th>
                   <th className="px-4 py-3 text-center font-semibold text-[#800000]">Ending Inv.</th>
+                  <th className="px-4 py-3 text-center font-semibold text-[#800000]">Unit</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Course</th>
+                  <th className="px-4 py-3 text-left font-semibold text-[#800000] relative group">
+                    <div className="flex items-center gap-2">
+                      Purpose
+                      <div className="absolute top-full right-0 mt-1 hidden group-hover:block bg-white border border-slate-300 rounded-lg shadow-lg z-50">
+                        <button
+                          onClick={() => handlePurposeChange('All')}
+                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
+                            purposeFilter === 'All' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
+                          }`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => handlePurposeChange('Training')}
+                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
+                            purposeFilter === 'Training' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
+                          }`}
+                        >
+                          Training
+                        </button>
+                        <button
+                          onClick={() => handlePurposeChange('Assessment')}
+                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
+                            purposeFilter === 'Assessment' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
+                          }`}
+                        >
+                          Assessment
+                        </button>
+                      </div>
+                    </div>
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Trainer</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Remarks</th>
                 </tr>
@@ -277,7 +323,11 @@ const ItemDetailPage = () => {
                     <td className="px-4 py-3 text-center font-semibold text-slate-600">
                       {record.endingInventory || "—"}
                     </td>
+                    <td className="px-4 py-3 text-center font-semibold text-slate-600">
+                      {item?.unit || "—"}
+                    </td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{record.course || "—"}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{record.purpose || "—"}</td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{record.trainer || "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{record.description || "—"}</td>
                   </tr>

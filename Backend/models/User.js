@@ -11,7 +11,7 @@ const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    unique: true,
+    unique: { name: 'unique_username' },
     validate: {
       len: [3, 100],
     },
@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
   email: {
     type: DataTypes.STRING(150),
     allowNull: false,
-    unique: true,
+    unique: { name: 'unique_email' },
     validate: {
       isEmail: true,
     },
@@ -60,7 +60,8 @@ const User = sequelize.define('User', {
         user.password = await bcryptjs.hash(user.password, salt);
       }
     },
-  },  indexes: [],});
+  },
+});
 
 // Instance method to compare passwords
 User.prototype.comparePassword = async function (password) {

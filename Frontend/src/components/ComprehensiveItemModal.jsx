@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { X, TrendingUp, TrendingDown } from "lucide-react"
 import Button from "./Button"
+import { getTrainers } from "../api/authApi"
 
 const ComprehensiveItemModal = ({
   isOpen,
@@ -13,12 +14,30 @@ const ComprehensiveItemModal = ({
   const [activeAction, setActiveAction] = useState(action || null)
   const [formData, setFormData] = useState({
     quantity: "",
-    performedBy: "",
     trainer: "",
     course: "",
     notes: "",
     purpose: "Training",
   })
+  const [trainers, setTrainers] = useState([])
+  const [loadingTrainers, setLoadingTrainers] = useState(false)
+
+  // Fetch trainers on component mount
+  useEffect(() => {
+    const fetchTrainers = async () => {
+      setLoadingTrainers(true)
+      try {
+        const data = await getTrainers()
+        setTrainers(data.trainers || [])
+      } catch (error) {
+        console.error("Failed to fetch trainers:", error)
+        setTrainers([])
+      } finally {
+        setLoadingTrainers(false)
+      }
+    }
+    fetchTrainers()
+  }, [])
 
   // Reset form when modal opens
   useEffect(() => {
@@ -26,7 +45,6 @@ const ComprehensiveItemModal = ({
       setActiveAction(action || null)
       setFormData({
         quantity: "",
-        performedBy: "",
         trainer: "",
         course: "",
         notes: "",
@@ -45,7 +63,6 @@ const ComprehensiveItemModal = ({
     setActiveAction(null)
     setFormData({
       quantity: "",
-      performedBy: "",
       trainer: "",
       course: "",
       notes: "",
@@ -54,8 +71,8 @@ const ComprehensiveItemModal = ({
   }
 
   const handleSubmit = (type) => {
-    if (!formData.quantity || !formData.performedBy) {
-      alert("Please fill in Quantity and Performer fields")
+    if (!formData.quantity) {
+      alert("Please fill in Quantity field")
       return
     }
 
@@ -216,22 +233,7 @@ const ComprehensiveItemModal = ({
                     />
                   </div>
 
-                  {/* Performer */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700">
-                      Performed By *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.performedBy}
-                      onChange={(e) =>
-                        handleChange("performedBy", e.target.value)
-                      }
-                      placeholder="Enter name"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-                      required
-                    />
-                  </div>
+
 
                   {/* Purpose (For) - Training/Assessment for Deduct, Replenishment for Add */}
                   {activeAction === "add" && (
@@ -270,13 +272,21 @@ const ComprehensiveItemModal = ({
                     <label className="block text-sm font-semibold text-slate-700">
                       Trainer
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.trainer}
                       onChange={(e) => handleChange("trainer", e.target.value)}
-                      placeholder="Enter trainer name"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-                    />
+                      disabled={loadingTrainers}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {loadingTrainers ? "Loading trainers..." : "Select a trainer"}
+                      </option>
+                      {trainers.map((trainer) => (
+                        <option key={trainer.id} value={trainer.name}>
+                          {trainer.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Course */}

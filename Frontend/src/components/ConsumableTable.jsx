@@ -5,11 +5,18 @@ const statusClassMap = {
   "Low Stock": "bg-[#fbe9ed] text-[#800000]"
 }
 
-const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = true }) => {
+const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = true, coursesMap = {} }) => {
   const handleRowClick = (item, e) => {
     if (!e.target.closest('button')) {
       onRowClick?.(item)
     }
+  }
+
+  const getCourseDisplay = (item) => {
+    if (item.courseId && coursesMap[item.courseId]) {
+      return coursesMap[item.courseId].courseName
+    }
+    return item.category || 'N/A'
   }
 
   return (
@@ -19,6 +26,7 @@ const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = t
           <thead className="bg-[#f8eef0]">
             <tr>
               <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Item Name</th>
+              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Course</th>
               <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Quantity</th>
               <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Unit</th>
               <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Status</th>
@@ -33,6 +41,7 @@ const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = t
                 className="cursor-pointer hover:bg-[#fce4e8]/40 transition"
               >
                 <td className="px-5 py-4 font-medium text-slate-700">{item.itemName}</td>
+                <td className="px-5 py-4 text-slate-700">{getCourseDisplay(item)}</td>
                 <td className="px-5 py-4 text-slate-700">{item.quantity}</td>
                 <td className="px-5 py-4 text-slate-600">{item.unit}</td>
                 <td className="px-5 py-4">

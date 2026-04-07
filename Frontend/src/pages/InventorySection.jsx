@@ -66,7 +66,7 @@ const InventorySection = ({ title, description, track }) => {
 
   const handleAdd = async (payload) => {
     try {
-      await addConsumable({ ...payload, category: track.toUpperCase() })
+      await addConsumable({ ...payload, category: track.toUpperCase(), location: selectedInventory })
       setIsAddOpen(false)
       await loadItems()
     } catch (error) {

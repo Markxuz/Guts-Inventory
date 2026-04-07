@@ -43,7 +43,6 @@ const Notification = sequelize.define('Notification', {
   tableName: 'notifications',
   timestamps: true,
   underscored: true,
-  indexes: [],
 });
 
 module.exports = Notification;

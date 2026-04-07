@@ -15,7 +15,6 @@ const ConsumableModal = ({
   title,
   submitLabel,
   initialValues,
-  lockCategory = false,
   onClose,
   onSubmit
 }) => {
@@ -74,12 +73,12 @@ const ConsumableModal = ({
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category/Track</span>
               <select
+                required
                 value={formData.category}
                 onChange={(event) => handleChange("category", event.target.value)}
-                disabled={lockCategory}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)] disabled:bg-slate-100"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)]"
               >
                 <option value="EIM">EIM</option>
                 <option value="SMAW">SMAW</option>

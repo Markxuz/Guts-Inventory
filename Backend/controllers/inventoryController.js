@@ -1,18 +1,18 @@
 // ─── POST /api/inventory/:id/checkout ───────────────────────────────────────
-// Body: { quantity, destination, notes, user }
+// Body: { quantity, destination, notes }
+// User is automatically extracted from authenticated request (req.user)
 const checkoutConsumable = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const { quantity, destination, notes, user } = req.body;
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
+  const { quantity, destination, notes } = req.body;
   const parsedQty = parseInt(quantity, 10);
   if (isNaN(parsedQty) || parsedQty <= 0) {
     return res.status(400).json({ error: 'quantity must be a positive integer.' });
   }
-  if (!destination || !user) {
-    return res.status(400).json({ error: 'destination and user are required.' });
+  if (!destination) {
+    return res.status(400).json({ error: 'destination is required.' });
+  }
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required.' });
   }
 
   try {
@@ -26,12 +26,13 @@ const checkoutConsumable = async (req, res) => {
     item.quantity -= parsedQty;
     await item.save();
 
+    const performedByUser = req.user?.fullName || req.user?.username || 'System';
     await logHistory({
       consumableId: item.id,
       actionType: 'Checkout',
       quantityChanged: -parsedQty,
       description: `Destination: ${destination}${notes ? ' | Notes: ' + notes : ''}`,
-      performedBy: user,
+      performedBy: performedByUser,
     });
 
     return res.json(formatItem(item));
@@ -208,7 +209,7 @@ const getInventoryByCategory = async (req, res) => {
 // Body: { itemName, category, quantity?, unit, reorderLevel? }
 // Returns the newly created consumable.
 const addConsumable = async (req, res) => {
-  const { itemName, category, quantity, unit, reorderLevel } = req.body;
+  const { itemName, category, quantity, unit, reorderLevel, location } = req.body;
 
   if (!itemName || !category || !unit) {
     return res.status(400).json({ error: 'itemName, category, and unit are required.' });
@@ -236,6 +237,7 @@ const addConsumable = async (req, res) => {
       quantityChanged: item.quantity,
       description: 'Initial stock from new consumable creation.',
       performedBy: req.body.performedBy,
+      location: location || 'main',
     });
 
     // Send notification to admins
@@ -265,12 +267,8 @@ const addConsumable = async (req, res) => {
 // ─── PUT /api/inventory/:id ───────────────────────────────────────────────────
 // Body: { itemName, category, quantity, unit, reorderLevel }
 const updateConsumable = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
   const { itemName, category, quantity, unit, reorderLevel } = req.body;
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
 
   if (!itemName || !category || !unit) {
     return res.status(400).json({ error: 'itemName, category, and unit are required.' });
@@ -328,12 +326,8 @@ const updateConsumable = async (req, res) => {
 // Body: { type: 'in' | 'out', amount: number }
 // Returns the updated consumable.
 const updateStock = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
   const { type, amount } = req.body;
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
 
   if (!['in', 'out'].includes(type)) {
     return res.status(400).json({ error: "type must be 'in' or 'out'." });
@@ -371,12 +365,13 @@ const updateStock = async (req, res) => {
     item[quantityField] = newQuantity;
 
     // Log history for the current location
+    const performedByUser = req.user?.fullName || req.user?.username || 'System'
     await logHistory({
       consumableId: item.id,
       actionType: type === 'in' ? 'Stock In' : 'Stock Out',
       quantityChanged: type === 'in' ? parsedAmount : -parsedAmount,
       description: req.body.description || null,
-      performedBy: req.body.performedBy,
+      performedBy: performedByUser,
       beginningInventory: beginningQty,
       endingInventory: newQuantity,
       course: req.body.course || null,
@@ -385,21 +380,18 @@ const updateStock = async (req, res) => {
       location: currentLocation,
     });
 
-    // If this is a stock OUT (consumption/deduction), automatically transfer to the opposite location
-    if (type === 'out') {
-      // Get opposite location's beginning inventory (before the transfer)
+    // TRANSFER LOGIC: If deducting from MAIN, transfer to TRAINING
+    if (type === 'out' && currentLocation === 'main') {
       const oppositeBeginningQty = item[oppositeQuantityField];
-      
-      // Increase the opposite location's stock by the deducted amount
       item[oppositeQuantityField] = oppositeBeginningQty + parsedAmount;
       
-      // Record the stock IN for the opposite location with proper inventory levels
+      // Log the stock IN for the training location
       await logHistory({
         consumableId: item.id,
         actionType: 'Stock In',
         quantityChanged: parsedAmount,
-        description: req.body.description ? `Transfer from ${currentLocation}: ${req.body.description}` : `Transfer from ${currentLocation}`,
-        performedBy: req.body.performedBy,
+        description: req.body.description ? `Transfer from main: ${req.body.description}` : `Transfer from main`,
+        performedBy: performedByUser,
         beginningInventory: oppositeBeginningQty,
         endingInventory: oppositeBeginningQty + parsedAmount,
         course: req.body.course || null,
@@ -408,12 +400,13 @@ const updateStock = async (req, res) => {
         location: oppositeLocation,
       });
     }
+    // CONSUMPTION LOGIC: If deducting from TRAINING, just consume (no transfer back to main)
 
     // Save the item with updated quantities
     await item.save();
 
     // Send notification to admins
-    const staffName = req.body.performedBy || req.user?.username || 'Staff';
+    const staffName = performedByUser;
     const actionText = type === 'in' ? 'added' : 'deducted';
     const trackName = item.category.toLowerCase();
     await sendNotificationToAdmins(
@@ -452,11 +445,7 @@ const updateStock = async (req, res) => {
 
 // ─── PATCH /api/inventory/:id/archive ─────────────────────────────────────────
 const archiveItem = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
 
   try {
     const item = await Consumable.findOne({ where: { id, ...ACTIVE_WHERE } });
@@ -484,11 +473,7 @@ const archiveItem = async (req, res) => {
 
 // ─── PATCH /api/inventory/:id/restore ─────────────────────────────────────────
 const restoreItem = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
 
   try {
     const item = await Consumable.findOne({ where: { id, isArchived: true } });
@@ -517,11 +502,7 @@ const restoreItem = async (req, res) => {
 // ─── DELETE /api/inventory/:id ─────────────────────────────────────────────────
 // Returns { message, id } on success.
 const deleteItem = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  if (isNaN(id)) {
-    return res.status(400).json({ error: 'id must be a valid integer.' });
-  }
+  const id = isNaN(req.params.id) ? req.params.id : parseInt(req.params.id, 10);
 
   try {
     const item = await Consumable.findByPk(id);

@@ -75,7 +75,6 @@ const Consumable = sequelize.define('Consumable', {
   // itemName → item_name, reorderLevel → reorder_level
   // toJSON() still returns camelCase keys.
   underscored: true,
-  indexes: [],
 });
 
 module.exports = Consumable;

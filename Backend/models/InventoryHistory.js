@@ -63,7 +63,6 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
   timestamps: true,
   updatedAt: false,
   underscored: true,
-  indexes: [],
 });
 
 module.exports = InventoryHistory;

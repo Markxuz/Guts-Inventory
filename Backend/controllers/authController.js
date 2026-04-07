@@ -158,9 +158,123 @@ const adminCreateUser = async (req, res) => {
   }
 };
 
+// Admin: Get all users
+const listUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']],
+    });
+
+    return res.json({
+      message: 'Users fetched successfully.',
+      users,
+    });
+  } catch (err) {
+    console.error('[listUsers]', err);
+    return res.status(500).json({ error: 'Failed to fetch users.' });
+  }
+};
+
+// Admin: Update user
+const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { username, email, fullName, role, isActive, password } = req.body;
+
+  if (!username && !email && !fullName && !role && isActive === undefined && !password) {
+    return res.status(400).json({ error: 'At least one field must be provided for update.' });
+  }
+
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Check if new username or email already exists (excluding current user)
+    if (username && username !== user.username) {
+      const existingUser = await User.findOne({ where: { username } });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Username already exists.' });
+      }
+    }
+
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email already exists.' });
+      }
+    }
+
+    // Update fields
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (fullName) user.fullName = fullName;
+    if (role && ['admin', 'staff'].includes(role)) user.role = role;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (password) user.password = password; // Will be hashed by beforeUpdate hook
+
+    await user.save();
+
+    return res.json({
+      message: 'User updated successfully.',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        isActive: user.isActive,
+      },
+    });
+  } catch (err) {
+    console.error('[updateUser]', err);
+    return res.status(500).json({ error: 'Failed to update user.' });
+  }
+};
+
+// Admin: Delete user (soft delete via isActive flag)
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Prevent deleting the admin who initiated the request
+    if (user.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account.' });
+    }
+
+    // Soft delete by setting isActive to false
+    user.isActive = false;
+    await user.save();
+
+    return res.json({
+      message: 'User deactivated successfully.',
+      user: {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        isActive: user.isActive,
+      },
+    });
+  } catch (err) {
+    console.error('[deleteUser]', err);
+    return res.status(500).json({ error: 'Failed to delete user.' });
+  }
+};
+
 module.exports = {
   login,
   register,
   getProfile,
   adminCreateUser,
+  listUsers,
+  updateUser,
+  deleteUser,
 };

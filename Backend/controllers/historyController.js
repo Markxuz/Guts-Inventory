@@ -40,20 +40,22 @@ const getHistory = async (req, res) => {
     const ids = [...new Set(historyRows.map((row) => row.consumableId))];
     const consumables = await Consumable.findAll({
       where: { id: ids },
-      attributes: ['id', 'itemName'],
+      attributes: ['id', 'itemName', 'unit'],
     });
 
     const nameMap = consumables.reduce((acc, item) => {
-      acc[item.id] = item.itemName;
+      acc[item.id] = { itemName: item.itemName, unit: item.unit };
       return acc;
     }, {});
 
     const logs = historyRows.map((row) => {
       const plain = row.get({ plain: true });
+      const consumableData = nameMap[plain.consumableId] || { itemName: 'Unknown Item', unit: 'N/A' };
       return {
         id: plain.id,
         consumableId: plain.consumableId,
-        itemName: nameMap[plain.consumableId] || 'Unknown Item',
+        itemName: consumableData.itemName,
+        unit: consumableData.unit,
         actionType: plain.actionType,
         quantityChanged: plain.quantityChanged,
         beginningInventory: plain.beginningInventory,

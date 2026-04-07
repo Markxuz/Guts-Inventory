@@ -10,9 +10,11 @@ const {
   restoreItem,
   deleteItem,
 } = require('../controllers/inventoryController');
-// Checkout a consumable (deducts stock, logs destination, notes, user)
+const { verifyToken } = require('../middleware/authMiddleware');
+
+// Checkout a consumable (deducts stock, logs destination, notes)
 // POST /api/inventory/:id/checkout
-router.post('/:id/checkout', checkoutConsumable);
+router.post('/:id/checkout', verifyToken, checkoutConsumable);
 
 // ┌──────────────────────────────────────────────────────────┐
 // │  Base path: /api/inventory  (mounted in server.js)       │
@@ -39,7 +41,7 @@ router.patch('/:id/restore', restoreItem);
 
 // Stock-in / stock-out for a specific item
 // Body: { type: 'in' | 'out', amount: number }
-router.patch('/:id/stock', updateStock);
+router.patch('/:id/stock', verifyToken, updateStock);
 
 // Remove an item
 router.delete('/:id', deleteItem);

@@ -10,8 +10,7 @@ const CheckoutModal = ({
   const [form, setForm] = useState({
     quantity: 1,
     destination: "",
-    notes: "",
-    user: ""
+    notes: ""
   })
 
   if (!isOpen || !item) return null
@@ -60,10 +59,6 @@ const CheckoutModal = ({
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Destination</span>
               <input required value={form.destination} onChange={e => handleChange("destination", e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)]" placeholder="Where will this go?" />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">User</span>
-              <input required value={form.user} onChange={e => handleChange("user", e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)]" placeholder="Who is checking out?" />
             </label>
             <label className="space-y-1 sm:col-span-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</span>
