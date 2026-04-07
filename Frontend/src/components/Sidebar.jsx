@@ -1,4 +1,4 @@
-import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen } from "lucide-react"
+import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen, Settings } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { useAuth } from "../context/AuthContext"
@@ -16,8 +16,10 @@ const courseItems = [
   { to: "/css", label: "CSS", icon: ShieldCheck }
 ]
 
-const historyItem = { to: "/history", label: "Activity Logs", icon: Clock }
-const archiveItem = { to: "/archive", label: "Archive Vault", icon: BoxArchive }
+const settingsItems = [
+  { to: "/history", label: "Activity Logs", icon: Clock },
+  { to: "/archive", label: "Archive Vault", icon: BoxArchive }
+]
 
 const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNavigate }) => {
   const { user, logout } = useAuth()
@@ -26,7 +28,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false)
   const [isCoursesOpen, setIsCoursesOpen] = useState(true)
-  const ArchiveIcon = archiveItem.icon
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -142,45 +144,52 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
       </nav>
 
       <div className={`mt-8 border-t border-slate-600/80 py-4 transition-all duration-300 ${isCollapsed ? "px-2" : "px-4"}`}>
-        <NavLink
-          to={historyItem.to}
-          title={isCollapsed ? historyItem.label : undefined}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            `group flex items-center rounded-r-xl border-l-4 py-3 text-sm font-semibold transition-all duration-300 ${
-              isActive
-                ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
-                : "border-transparent text-slate-200 hover:bg-slate-700/70 hover:text-white"
-            } ${isCollapsed ? "justify-center px-2" : "gap-3 px-5"}`
-          }
-        >
-          <Clock className="h-4 w-4 shrink-0" />
-          <span
-            className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}
+        {/* Settings Dropdown */}
+        <div>
+          <button
+            type="button"
+            onClick={() => !isCollapsed && setIsSettingsOpen(!isSettingsOpen)}
+            title={isCollapsed ? "Settings" : undefined}
+            className={`w-full group flex items-center rounded-r-xl border-l-4 py-3 text-sm font-semibold transition-all duration-300 border-transparent text-slate-200 hover:bg-slate-700/70 hover:text-white ${isCollapsed ? "justify-center px-2" : "gap-3 px-5"}`}
           >
-            {historyItem.label}
-          </span>
-        </NavLink>
+            <Settings className="h-4 w-4 shrink-0" />
+            <span
+              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"}`}
+            >
+              Settings
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-4 opacity-100"} ${isSettingsOpen ? "rotate-180" : "rotate-0"}`}
+            />
+          </button>
 
-        <NavLink
-          to={archiveItem.to}
-          title={isCollapsed ? archiveItem.label : undefined}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            `group flex items-center rounded-r-xl border-l-4 py-3 text-sm font-semibold transition-all duration-300 ${
-              isActive
-                ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
-                : "border-transparent text-slate-200 hover:bg-slate-700/70 hover:text-white"
-            } ${isCollapsed ? "justify-center px-2" : "gap-3 px-5"}`
-          }
-        >
-          <BoxArchive className="h-4 w-4 shrink-0" />
-          <span
-            className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}
-          >
-            {archiveItem.label}
-          </span>
-        </NavLink>
+          {/* Settings Items */}
+          {isSettingsOpen && !isCollapsed && (
+            <div className="mt-2 space-y-2 pl-2">
+              {settingsItems.map((item) => {
+                const Icon = item.icon
+
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      `group flex items-center rounded-r-lg border-l-4 py-2 px-3 text-xs font-semibold transition-all duration-300 ${
+                        isActive
+                          ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
+                          : "border-transparent text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                      }`
+                    }
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="ml-3 whitespace-nowrap">{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* User Profile Section - Pushed to bottom */}
