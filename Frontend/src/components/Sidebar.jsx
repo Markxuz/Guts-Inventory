@@ -1,19 +1,15 @@
 import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen, Settings } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
+import { getActiveCourses } from "../api/courseApi"
 import AddUserModal from "./AddUserModal"
 import UserManagementModal from "./UserManagementModal"
 import TrainerManagementModal from "./TrainerManagementModal"
+import CourseManagementModal from "./CourseManagementModal"
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }
-]
-
-const courseItems = [
-  { to: "/eim", label: "EIM", icon: PackageOpen },
-  { to: "/smaw", label: "SMAW", icon: Wrench },
-  { to: "/css", label: "CSS", icon: ShieldCheck }
 ]
 
 const settingsItems = [
@@ -27,8 +23,15 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false)
+  const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false)
+  const [courseItems, setCourseItems] = useState([])
   const [isCoursesOpen, setIsCoursesOpen] = useState(true)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Fetch courses on mount
+  useEffect(() => {
+    fetchCourses()
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -38,6 +41,25 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
   const handleAddUserSuccess = (fullName, role) => {
     // Show success toast/message
     alert(`✓ User "${fullName}" created successfully as ${role}!`)
+  }
+
+  const handleCoursesUpdated = () => {
+    // Refresh courses when a new course is added/updated/deleted
+    fetchCourses()
+  }
+
+  const fetchCourses = async () => {
+    try {
+      const data = await getActiveCourses()
+      const courses = (data.courses || []).map(course => ({
+        to: `/${course.code.split(/\s+/)[0].toLowerCase()}`,
+        label: course.name,
+        icon: PackageOpen,
+      }))
+      setCourseItems(courses)
+    } catch (err) {
+      console.error('Error fetching courses:', err)
+    }
   }
 
   return (
@@ -166,7 +188,15 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
           {/* Settings Items */}
           {isSettingsOpen && !isCollapsed && (
             <div className="mt-2 space-y-2 pl-2">
-              {settingsItems.map((item) => {
+              {settingsItems
+                .filter(item => {
+                  // Only show Archive Vault to admins
+                  if (item.label === "Archive Vault" && user?.role !== "admin") {
+                    return false
+                  }
+                  return true
+                })
+                .map((item) => {
                 const Icon = item.icon
 
                 return (
@@ -214,6 +244,14 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
               <BookOpen className="h-4 w-4 shrink-0" />
               Manage Trainers
             </button>
+            <button
+              type="button"
+              onClick={() => setIsCourseManagementOpen(true)}
+              className="w-full flex items-center gap-3 rounded-lg py-2 px-3 bg-slate-700/50 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
+            >
+              <BookOpen className="h-4 w-4 shrink-0" />
+              Manage Courses
+            </button>
           </div>
         )}
 
@@ -257,6 +295,13 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
             Logout
           </span>
         </button>
+
+        {/* Version Display */}
+        <div className={`mt-4 pt-3 border-t border-slate-600/80 text-center transition-all duration-300 ${isCollapsed ? "px-2" : "px-4"}`}>
+          <p className={`text-xs font-semibold text-slate-400 transition-all duration-300 ${isCollapsed ? "max-h-0 opacity-0" : "max-h-10 opacity-100"}`}>
+            Version 0.1
+          </p>
+        </div>
       </div>
 
       {/* Modals - Only for admins */}
@@ -274,6 +319,11 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
           <TrainerManagementModal
             isOpen={isTrainerManagementOpen}
             onClose={() => setIsTrainerManagementOpen(false)}
+          />
+          <CourseManagementModal
+            isOpen={isCourseManagementOpen}
+            onClose={() => setIsCourseManagementOpen(false)}
+            onCoursesUpdated={handleCoursesUpdated}
           />
         </>
       )}

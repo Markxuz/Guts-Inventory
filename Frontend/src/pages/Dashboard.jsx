@@ -60,7 +60,7 @@ const Dashboard = () => {
 
   // Listen for real-time stock updates
   useEffect(() => {
-    const handleStockUpdate = (data) => {
+    const handleStockUpdate = async (data) => {
       console.log('📦 Updating dashboard with stock update:', data)
       setAllItems(prevItems =>
         prevItems.map(item =>
@@ -72,6 +72,17 @@ const Dashboard = () => {
         ...prevSummary,
         grandTotal: prevSummary.grandTotal
       }))
+      
+      // Refresh history logs to show latest activity
+      try {
+        const logs = await getHistoryLogs()
+        const filtered = (logs || [])
+          .filter(h => h.location === selectedInventory)
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setAllHistory(filtered)
+      } catch (error) {
+        console.error('Error refreshing history logs:', error)
+      }
     }
     
     setOnStockUpdate(() => handleStockUpdate)
@@ -79,7 +90,7 @@ const Dashboard = () => {
     return () => {
       setOnStockUpdate(null)
     }
-  }, [])
+  }, [selectedInventory])
 
   const lowStockItems = useMemo(
     () =>

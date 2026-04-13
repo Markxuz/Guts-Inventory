@@ -4,9 +4,7 @@ import { InventoryLocationProvider } from "./context/InventoryLocationContext"
 import LoginPage from "./pages/LoginPage"
 import MainLayout from "./layouts/MainLayout"
 import Dashboard from "./pages/Dashboard"
-import EIM from "./pages/EIM"
-import SMAW from "./pages/SMAW"
-import CSS from "./pages/CSS"
+import CourseInventoryPage from "./pages/CourseInventoryPage"
 import History from "./pages/History"
 import HistoryPage from "./pages/HistoryPage"
 import Archive from "./pages/Archive"
@@ -46,13 +44,11 @@ const App = () => {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/eim" element={<EIM />} />
-          <Route path="/smaw" element={<SMAW />} />
-          <Route path="/css" element={<CSS />} />
           <Route path="/inventory/:track/:itemId" element={<ItemDetailPage />} />
           <Route path="/history/:track/:itemId" element={<HistoryPage />} />
           <Route path="/history" element={<History />} />
           <Route path="/archive" element={<Archive />} />
+          <Route path="/:courseCode" element={<CourseInventoryPage />} />
         </Route>
 
         {/* Fallback - redirect to login or dashboard */}

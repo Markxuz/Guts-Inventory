@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ChevronLeft, Printer } from "lucide-react"
+import { ChevronLeft, Printer, ArrowUpDown, Edit2, X } from "lucide-react"
 import { getInventoryByTrack } from "../api/inventoryApi"
-import { getHistoryLogs } from "../api/historyApi"
+import { getHistoryLogs, updateHistoryRecord } from "../api/historyApi"
 import { useInventoryLocation } from "../context/InventoryLocationContext"
+import { useAuth } from "../context/AuthContext"
 import { normalizeItems } from "../utils/inventory"
 
 const ROWS_PER_PAGE = 20
@@ -11,12 +12,22 @@ const ROWS_PER_PAGE = 20
 const HistoryPage = () => {
   const { track, itemId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { selectedInventory } = useInventoryLocation()
   const [item, setItem] = useState(null)
   const [allHistory, setAllHistory] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [purposeFilter, setPurposeFilter] = useState('All')
+  const [searchUsername, setSearchUsername] = useState('')
+  const [sortDate, setSortDate] = useState('DESC')
+  const [editingRecord, setEditingRecord] = useState(null)
+  const [editDescription, setEditDescription] = useState('')
+  const [editPurchase, setEditPurchase] = useState(0)
+  const [editConsumption, setEditConsumption] = useState(0)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [isEditLoading, setIsEditLoading] = useState(false)
+  const [editError, setEditError] = useState(null)
   const printRef = useRef(null)
 
   useEffect(() => {
@@ -46,10 +57,19 @@ const HistoryPage = () => {
     loadData()
   }, [track, itemId, selectedInventory])
 
-  // Pagination logic with purpose filtering
-  const filteredHistory = purposeFilter === 'All' 
-    ? allHistory 
-    : allHistory.filter(h => h.purpose === purposeFilter)
+  // Pagination logic with purpose filtering, search, and date filtering
+  const filteredHistory = allHistory
+    .filter(h => {
+      const matchesPurpose = purposeFilter === 'All' || h.purpose === purposeFilter
+      const matchesUsername = !searchUsername || (h.performedBy || 'System').toLowerCase().includes(searchUsername.toLowerCase())
+      const matchesDate = !selectedDate || new Date(h.createdAt).toLocaleDateString('en-CA') === selectedDate
+      return matchesPurpose && matchesUsername && matchesDate
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt)
+      const dateB = new Date(b.createdAt)
+      return sortDate === 'DESC' ? dateB - dateA : dateA - dateB
+    })
   
   const totalPages = Math.ceil(filteredHistory.length / ROWS_PER_PAGE)
   const startIndex = (currentPage - 1) * ROWS_PER_PAGE
@@ -60,6 +80,93 @@ const HistoryPage = () => {
   const handlePurposeChange = (newPurpose) => {
     setPurposeFilter(newPurpose)
     setCurrentPage(1)
+  }
+
+  const handleEditClick = (record) => {
+    setEditingRecord(record)
+    setEditDescription(record.description || '')
+    setEditPurchase(record.quantityChanged > 0 ? record.quantityChanged : 0)
+    setEditConsumption(record.quantityChanged < 0 ? Math.abs(record.quantityChanged) : 0)
+  }
+
+  const handleSaveEdit = async () => {
+    if (editingRecord) {
+      let newQuantityChanged = 0
+      if (editPurchase > 0) {
+        newQuantityChanged = editPurchase
+      } else if (editConsumption > 0) {
+        newQuantityChanged = -editConsumption
+      }
+      
+      // Client-side validation
+      const newEndingInventory = editingRecord.beginningInventory + newQuantityChanged
+      if (newEndingInventory < 0) {
+        setEditError('Consumption cannot exceed beginning inventory. Ending inventory would be negative.')
+        return
+      }
+
+      setIsEditLoading(true)
+      setEditError(null)
+
+      try {
+        // Call API to update the record
+        const result = await updateHistoryRecord(editingRecord.id, {
+          quantityChanged: newQuantityChanged,
+          description: editDescription,
+        })
+
+        // Extract cascade and update information
+        const replenishmentAdjustment = result.data?.replenishmentAdjustment || 0
+        const stockUpdateAmount = result.data?.stockUpdateAmount || 0
+        const cascadeCount = result.data?.cascadeCount || 0
+        const finalQuantity = result.data?.finalQuantity || 0
+
+        // Build success message
+        let successMessage = '✓ History record updated successfully!'
+        
+        if (cascadeCount > 0) {
+          successMessage += `\n🔄 Recalculated ${cascadeCount} subsequent transaction${cascadeCount !== 1 ? 's' : ''}`
+        }
+
+        if (finalQuantity !== undefined && finalQuantity !== null) {
+          successMessage += `\n📦 Current stock now: ${finalQuantity} units`
+        }
+
+        if (editingRecord.actionType === 'Stock In' && stockUpdateAmount > 0) {
+          successMessage += `\n➕ Main inventory increased: +${stockUpdateAmount} units`
+        } else if (editingRecord.actionType === 'Stock Out' && replenishmentAdjustment !== 0) {
+          if (replenishmentAdjustment > 0) {
+            successMessage += `\n⬆️ Training inventory adjusted: +${replenishmentAdjustment} units (more consumed)`
+          } else {
+            successMessage += `\n⬇️ Training inventory adjusted: ${replenishmentAdjustment} units (less consumed)`
+          }
+        }
+
+        setEditingRecord(null)
+
+        // Reload all history data to show updated values
+        try {
+          const logs = await getHistoryLogs({ itemId })
+          const filtered = (logs || [])
+            .filter(h => h.location === selectedInventory)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          setAllHistory(filtered)
+          setCurrentPage(1)
+        } catch (reloadErr) {
+          console.warn('Failed to reload history after edit:', reloadErr)
+        }
+
+        // Show success message
+        alert(successMessage)
+      } catch (error) {
+        console.error('Failed to save edit:', error)
+        const errorMsg = error.response?.data?.error || 'Failed to save changes. Please try again.'
+        const detailsMsg = error.response?.data?.details ? `\n\nDetails: ${error.response.data.details}` : ''
+        setEditError(errorMsg + detailsMsg)
+      } finally {
+        setIsEditLoading(false)
+      }
+    }
   }
 
   // Print functionality - uses current tab without opening new window
@@ -247,6 +354,84 @@ const HistoryPage = () => {
         </div>
       )}
 
+      {/* Filters Section */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+        {/* Row 1: Search and Sort */}
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Search Username */}
+          <div>
+            <label className="text-sm font-semibold text-slate-700 block mb-2">Search by Username:</label>
+            <input
+              type="text"
+              placeholder="Enter username..."
+              value={searchUsername}
+              onChange={(e) => {
+                setSearchUsername(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            />
+          </div>
+
+          {/* Sort Toggle and Date Picker */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 block">Sort by Date:</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSortDate(sortDate === 'DESC' ? 'ASC' : 'DESC')
+                  setCurrentPage(1)
+                }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition"
+                title={`Sort by date (${sortDate === 'DESC' ? 'Newest' : 'Oldest'} first)`}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                {sortDate === 'DESC' ? 'Newest' : 'Oldest'}
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+              />
+            </div>
+          </div>
+
+          {/* Purpose Filter */}
+          <div>
+            <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Purpose:</label>
+            <select
+              value={purposeFilter}
+              onChange={(e) => handlePurposeChange(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            >
+              <option value="All">All</option>
+              <option value="Training">Training</option>
+              <option value="Assessment">Assessment</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {(searchUsername || purposeFilter !== 'All' || selectedDate) && (
+          <button
+            onClick={() => {
+              setSearchUsername('')
+              setPurposeFilter('All')
+              setSelectedDate('')
+              setSortDate('DESC')
+              setCurrentPage(1)
+            }}
+            className="text-xs text-red-600 hover:text-red-700 font-medium"
+          >
+            Clear All Filters
+          </button>
+        )}
+      </div>
+
       {/* History Table */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -267,39 +452,12 @@ const HistoryPage = () => {
                   <th className="px-4 py-3 text-center font-semibold text-[#800000]">Unit</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Performed By</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Course</th>
-                  <th className="px-4 py-3 text-left font-semibold text-[#800000] relative group">
-                    <div className="flex items-center gap-2">
-                      Purpose
-                      <div className="absolute top-full right-0 mt-1 hidden group-hover:block bg-white border border-slate-300 rounded-lg shadow-lg z-50">
-                        <button
-                          onClick={() => handlePurposeChange('All')}
-                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
-                            purposeFilter === 'All' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
-                          }`}
-                        >
-                          All
-                        </button>
-                        <button
-                          onClick={() => handlePurposeChange('Training')}
-                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
-                            purposeFilter === 'Training' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
-                          }`}
-                        >
-                          Training
-                        </button>
-                        <button
-                          onClick={() => handlePurposeChange('Assessment')}
-                          className={`block w-full text-left px-4 py-2 hover:bg-slate-100 transition whitespace-nowrap ${
-                            purposeFilter === 'Assessment' ? 'bg-[#f8eef0] text-[#800000] font-semibold' : 'text-slate-700'
-                          }`}
-                        >
-                          Assessment
-                        </button>
-                      </div>
-                    </div>
-                  </th>
+                  <th className="px-4 py-3 text-left font-semibold text-[#800000]">Purpose</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Trainer</th>
                   <th className="px-4 py-3 text-left font-semibold text-[#800000]">Remarks</th>
+                  {user?.role === 'admin' && (
+                    <th className="px-4 py-3 text-center font-semibold text-[#800000]">Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -334,6 +492,18 @@ const HistoryPage = () => {
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{record.purpose || "—"}</td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{record.trainer || "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{record.description || "—"}</td>
+                    {user?.role === 'admin' && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleEditClick(record)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-200 transition"
+                          title="Edit this record"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -438,6 +608,106 @@ const HistoryPage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="font-semibold text-slate-900">Edit History Record</h3>
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="text-slate-400 hover:text-slate-600"
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 px-6 py-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Date</label>
+                <p className="text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">{new Date(editingRecord.createdAt).toLocaleDateString("en-PH")}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Performed By</label>
+                <p className="text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">{editingRecord.performedBy || 'System'}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Purchase (Edit)</label>
+                  <input
+                    type="number"
+                    value={editPurchase}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value) || 0)
+                      setEditPurchase(val)
+                      if (val > 0) setEditConsumption(0)
+                    }}
+                    min="0"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Consumption (Edit)</label>
+                  <input
+                    type="number"
+                    value={editConsumption}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value) || 0)
+                      setEditConsumption(val)
+                      if (val > 0) setEditPurchase(0)
+                    }}
+                    min="0"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Status / Remarks (Edit)</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Enter updated remarks or status..."
+                  rows="4"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+                />
+              </div>
+
+              {editError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                  {editError}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  onClick={() => {
+                    setEditingRecord(null)
+                    setEditError(null)
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition disabled:opacity-50"
+                  type="button"
+                  disabled={isEditLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="px-4 py-2 rounded-lg bg-[#800000] text-white hover:bg-[#660000] font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled={isEditLoading}
+                >
+                  {isEditLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

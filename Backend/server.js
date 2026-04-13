@@ -10,8 +10,10 @@ const historyRoutes = require('./routes/historyRoutes');
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const trainerRoutes = require('./routes/trainerRoutes');
+const courseRoutes = require('./routes/courseRoutes');
 const User = require('./models/User');
 const Trainer = require('./models/Trainer');
+const Course = require('./models/Course');
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +69,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', trainerRoutes);
+app.use('/api', courseRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -82,6 +85,10 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     console.log('✔  Database connection established.');
+
+    // Sync models with database
+    await sequelize.sync({ alter: true });
+    console.log('✔  Database models synced.');
 
     server.listen(PORT, () => {
       console.log(`✔  Server running → http://localhost:${PORT}`);

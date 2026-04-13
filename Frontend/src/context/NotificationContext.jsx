@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+﻿import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
@@ -11,53 +11,80 @@ export const NotificationProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onStockUpdate, setOnStockUpdate] = useState(null);
 
-  // Determine the socket URL (remove /api from the base URL)
   const getSocketUrl = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     return apiUrl.replace(/\/api$/, '');
   };
 
-  // Initialize socket connection
   useEffect(() => {
     if (!user || !token) return;
 
-    const socketUrl = getSocketUrl();
-    const socketInstance = io(socketUrl, {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-    });
+    const fetchNotifications = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${apiUrl}/notifications`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    socketInstance.on('connect', () => {
-      console.log('📱 Socket connected');
-      // Register user for notifications
-      socketInstance.emit('user_connect', user.id);
-    });
-
-    socketInstance.on('new_notification', (data) => {
-      console.log('🔔 New notification:', data);
-      setNotifications((prev) => [data, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    socketInstance.on('stock_updated', (data) => {
-      console.log('📦 Stock updated:', data);
-      // Call the registered callback if one exists
-      if (onStockUpdate) {
-        onStockUpdate(data);
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data);
+          const unread = data.filter((notif) => !notif.isRead).length;
+          setUnreadCount(unread);
+          console.log('✅ Loaded', data.length, 'notifications from database');
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
       }
-    });
-
-    socketInstance.on('disconnect', () => {
-      console.log('📴 Socket disconnected');
-    });
-
-    setSocket(socketInstance);
-
-    return () => {
-      socketInstance.disconnect();
     };
+
+    fetchNotifications();
+  }, [user, token]);
+
+  useEffect(() => {
+    if (!user || !token) return;
+
+    try {
+      const socketUrl = getSocketUrl();
+      const socketInstance = io(socketUrl, {
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5,
+      });
+
+      socketInstance.on('connect', () => {
+        console.log('📱 Socket connected');
+        socketInstance.emit('user_connect', user.id);
+      });
+
+      socketInstance.on('new_notification', (data) => {
+        console.log('🔔 New notification:', data);
+        setNotifications((prev) => [data, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+      });
+
+      socketInstance.on('stock_updated', (data) => {
+        console.log('📦 Stock updated:', data);
+        if (onStockUpdate) {
+          onStockUpdate(data);
+        }
+      });
+
+      socketInstance.on('disconnect', () => {
+        console.log('📴 Socket disconnected');
+      });
+
+      setSocket(socketInstance);
+
+      return () => {
+        socketInstance.disconnect();
+      };
+    } catch (error) {
+      console.error('Socket connection error:', error);
+    }
   }, [user, token, onStockUpdate]);
 
   const getApiUrl = () => {

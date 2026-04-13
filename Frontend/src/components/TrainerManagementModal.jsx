@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { X, Trash2, Edit2, Plus, CheckCircle2 } from 'lucide-react'
 import Button from './Button'
 import { createTrainer, getAllTrainers, updateTrainer, deleteTrainer } from '../api/authApi'
-
-const CATEGORIES = ['CSS', 'SMAW', 'EIM']
+import { getActiveCourses } from '../api/courseApi'
 
 const TrainerManagementModal = ({ isOpen, onClose }) => {
   const [trainers, setTrainers] = useState([])
+  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -22,22 +22,30 @@ const TrainerManagementModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchTrainers()
+      fetchData()
     }
   }, [isOpen])
 
-  const fetchTrainers = async () => {
+  const fetchData = async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await getAllTrainers()
-      setTrainers(data.trainers || [])
+      const [trainersData, coursesData] = await Promise.all([
+        getAllTrainers(),
+        getActiveCourses(),
+      ])
+      setTrainers(trainersData.trainers || [])
+      setCourses(coursesData.courses || [])
     } catch (err) {
-      setError('Failed to load trainers. Please try again.')
-      console.error('Error fetching trainers:', err)
+      setError('Failed to load data. Please try again.')
+      console.error('Error fetching data:', err)
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchTrainers = async () => {
+    await fetchData()
   }
 
   const handleAddTrainer = () => {
@@ -249,20 +257,27 @@ const TrainerManagementModal = ({ isOpen, onClose }) => {
               {/* Categories */}
               <div>
                 <label className="block text-sm font-bold text-slate-900 mb-3">
-                  Categories <span className="text-red-500">*</span>
+                  Courses Assigned <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
-                  {CATEGORIES.map(category => (
-                    <label key={category} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={formData.categories.includes(category)}
-                        onChange={() => toggleCategory(category)}
-                        className="h-4 w-4 rounded text-[var(--brand-primary)]"
-                      />
-                      <span className="font-medium text-slate-900">{category}</span>
-                    </label>
-                  ))}
+                  {courses.length === 0 ? (
+                    <p className="text-xs text-slate-500">No courses available. Please create courses first.</p>
+                  ) : (
+                    courses.map(course => (
+                      <label key={course.id} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.categories.includes(course.code)}
+                          onChange={() => toggleCategory(course.code)}
+                          className="h-4 w-4 rounded text-[var(--brand-primary)]"
+                        />
+                        <div className="flex-1">
+                          <span className="font-medium text-slate-900">{course.name}</span>
+                          <span className="ml-2 text-xs text-slate-500">({course.code})</span>
+                        </div>
+                      </label>
+                    ))
+                  )}
                 </div>
                 {formErrors.categories && <p className="mt-2 text-xs text-red-600">{formErrors.categories}</p>}
               </div>

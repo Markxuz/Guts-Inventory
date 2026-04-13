@@ -46,7 +46,6 @@ const InventoryHistory = require('../models/InventoryHistory');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 
-const VALID_CATEGORIES = ['EIM', 'SMAW', 'CSS'];
 const ACTIVE_WHERE = { isArchived: false };
 
 /**
@@ -144,12 +143,6 @@ const getInventory = async (req, res) => {
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
   const location = req.query.location || 'main';
 
-  if (queryCategory && !VALID_CATEGORIES.includes(queryCategory)) {
-    return res.status(400).json({
-      error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}.`,
-    });
-  }
-
   try {
     const where = { isArchived: archivedOnly };
     if (queryCategory) {
@@ -186,12 +179,6 @@ const getInventoryByCategory = async (req, res) => {
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
   const location = req.query.location || 'main';
 
-  if (!VALID_CATEGORIES.includes(upperCategory)) {
-    return res.status(400).json({
-      error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}.`,
-    });
-  }
-
   try {
     const rows = await Consumable.findAll({
       where: { category: upperCategory, isArchived: archivedOnly },
@@ -216,11 +203,6 @@ const addConsumable = async (req, res) => {
   }
 
   const upperCategory = String(category).toUpperCase();
-  if (!VALID_CATEGORIES.includes(upperCategory)) {
-    return res.status(400).json({
-      error: `category must be one of: ${VALID_CATEGORIES.join(', ')}.`,
-    });
-  }
 
   try {
     const item = await Consumable.create(parsePayload({
@@ -275,11 +257,6 @@ const updateConsumable = async (req, res) => {
   }
 
   const upperCategory = String(category).toUpperCase();
-  if (!VALID_CATEGORIES.includes(upperCategory)) {
-    return res.status(400).json({
-      error: `category must be one of: ${VALID_CATEGORIES.join(', ')}.`,
-    });
-  }
 
   try {
     const item = await Consumable.findOne({ where: { id, ...ACTIVE_WHERE } });

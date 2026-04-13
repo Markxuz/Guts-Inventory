@@ -7,3 +7,8 @@ export const getHistoryLogs = async ({ category, itemId } = {}) => {
   const response = await api.get("/history", { params })
   return response.data?.logs || []
 }
+
+export const updateHistoryRecord = async (id, data) => {
+  const response = await api.put(`/history/${id}`, data)
+  return response.data
+}

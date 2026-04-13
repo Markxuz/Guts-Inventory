@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ArrowUpDown, Edit2, X } from "lucide-react"
 import Button from "../components/Button"
 import { useSearch } from "../context/SearchContext"
 import { getHistoryLogs } from "../api/historyApi"
@@ -26,7 +26,11 @@ const History = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAction, setSelectedAction] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
+  const [searchUsername, setSearchUsername] = useState('')
+  const [sortDate, setSortDate] = useState('DESC') // DESC or ASC
   const [currentPage, setCurrentPage] = useState(1)
+  const [editingLog, setEditingLog] = useState(null)
+  const [editDescription, setEditDescription] = useState('')
   const { searchQuery } = useSearch()
 
   useEffect(() => {
@@ -52,26 +56,53 @@ const History = () => {
   )
 
   const filteredLogs = useMemo(
-    () =>
-      logs.filter((log) => {
+    () => {
+      let filtered = logs.filter((log) => {
         const matchesSearch = log.itemName.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesAction = !selectedAction || log.actionType === selectedAction
         const matchesDate = !selectedDate || new Date(log.createdAt).toLocaleDateString('en-CA') === selectedDate
-        return matchesSearch && matchesAction && matchesDate
-      }),
-    [logs, searchQuery, selectedAction, selectedDate]
+        const matchesUsername = !searchUsername || (log.performedBy || 'System').toLowerCase().includes(searchUsername.toLowerCase())
+        return matchesSearch && matchesAction && matchesDate && matchesUsername
+      })
+
+      // Sort by date
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.createdAt)
+        const dateB = new Date(b.createdAt)
+        return sortDate === 'DESC' ? dateB - dateA : dateA - dateB
+      })
+
+      return filtered
+    },
+    [logs, searchQuery, selectedAction, selectedDate, searchUsername, sortDate]
   )
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedAction, selectedDate])
+  }, [searchQuery, selectedAction, selectedDate, searchUsername, sortDate])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
   const paginatedLogs = filteredLogs.slice(startIndex, endIndex)
+
+  const handleEditClick = (log) => {
+    setEditingLog(log)
+    setEditDescription(log.description || '')
+  }
+
+  const handleSaveEdit = () => {
+    if (editingLog) {
+      setLogs(logs.map(log => 
+        log.id === editingLog.id 
+          ? { ...log, description: editDescription }
+          : log
+      ))
+      setEditingLog(null)
+    }
+  }
 
   return (
     <section className="space-y-6">
@@ -82,60 +113,92 @@ const History = () => {
 
       {/* Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-        {/* Date Filter */}
+        {/* Search Bar */}
         <div>
-          <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Date:</label>
+          <label className="text-sm font-semibold text-slate-700 block mb-2">Search by Username or Action:</label>
           <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            type="text"
+            placeholder="Enter username or search..."
+            value={searchUsername}
+            onChange={(e) => setSearchUsername(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
           />
-          {selectedDate && (
+        </div>
+
+        {/* Date Filter and Sort Toggle */}
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Date:</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            />
+          </div>
+          <div>
             <button
-              onClick={() => setSelectedDate('')}
-              className="ml-2 text-xs text-red-600 hover:text-red-700 font-medium"
+              onClick={() => setSortDate(sortDate === 'DESC' ? 'ASC' : 'DESC')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition"
+              title={`Sort by date (${sortDate === 'DESC' ? 'Newest' : 'Oldest'} first)`}
             >
-              Clear Date
+              <ArrowUpDown className="h-4 w-4" />
+              {sortDate === 'DESC' ? 'Newest' : 'Oldest'}
             </button>
-          )}
+          </div>
         </div>
 
         {/* Action Type Filter */}
         <div>
           <p className="mb-3 text-sm font-semibold text-slate-700">Filter by Action Type:</p>
           <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedAction('')}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                selectedAction === ''
+                  ? 'bg-[var(--brand-primary)] text-white'
+                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              All Actions
+            </button>
+            {uniqueActions.map((action) => {
+              const colors = getActionColor(action)
+              return (
+                <button
+                  key={action}
+                  onClick={() => setSelectedAction(action)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    selectedAction === action
+                      ? `${colors.badge} text-white`
+                      : `${colors.color} ${colors.textColor} hover:opacity-80`
+                  }`}
+                >
+                  {action}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {(searchUsername || selectedDate || selectedAction) && (
           <button
-            onClick={() => setSelectedAction('')}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              selectedAction === ''
-                ? 'bg-[var(--brand-primary)] text-white'
-                : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-            }`}
+            onClick={() => {
+              setSearchUsername('')
+              setSelectedDate('')
+              setSelectedAction('')
+            }}
+            className="text-xs text-red-600 hover:text-red-700 font-medium"
           >
-            All Actions
+            Clear All Filters
           </button>
-          {uniqueActions.map((action) => {
-            const colors = getActionColor(action)
-            return (
-              <button
-                key={action}
-                onClick={() => setSelectedAction(action)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                  selectedAction === action
-                    ? `${colors.badge} text-white`
-                    : `${colors.color} ${colors.textColor} hover:opacity-80`
-                }`}
-              >
-                {action}
-              </button>
-            )
-          })}          </div>        </div>
+        )}
       </div>
 
       {/* Print Button */}
       <div className="flex justify-end print:hidden">
-        <Button onClick={() => window.print()}>📄 Print Report</Button>
+        <Button onClick={() => window.print()}> Print Report</Button>
       </div>
 
       {/* Logs Table */}
@@ -160,6 +223,7 @@ const History = () => {
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Performed By</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Details</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Date & Time</th>
+                  <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -195,6 +259,16 @@ const History = () => {
                           minute: '2-digit',
                           second: '2-digit'
                         })}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <button
+                          onClick={() => handleEditClick(log)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-200 transition"
+                          title="Edit this record"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          Edit
+                        </button>
                       </td>
                     </tr>
                   )
@@ -236,6 +310,64 @@ const History = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="font-semibold text-slate-900">Edit History Record</h3>
+              <button
+                onClick={() => setEditingLog(null)}
+                className="text-slate-400 hover:text-slate-600"
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 px-6 py-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Item Name</label>
+                <p className="text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">{editingLog.itemName}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Action Type</label>
+                <p className="text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">{editingLog.actionType}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Status / Details (Edit)</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Enter updated details or status..."
+                  rows="4"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  onClick={() => setEditingLog(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition"
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="px-4 py-2 rounded-lg bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-strong)] font-medium transition"
+                  type="button"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>

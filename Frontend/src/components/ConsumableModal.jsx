@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { X } from "lucide-react"
 import Button from "./Button"
+import { getActiveCourses } from "../api/courseApi"
 
 const emptyForm = {
   itemName: "",
@@ -20,10 +21,27 @@ const ConsumableModal = ({
 }) => {
   const seed = useMemo(() => ({ ...emptyForm, ...initialValues }), [initialValues])
   const [formData, setFormData] = useState(seed)
+  const [courses, setCourses] = useState([])
 
   useEffect(() => {
     setFormData(seed)
   }, [seed])
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const data = await getActiveCourses()
+        setCourses(data.courses || [])
+        // If no courses exist, ensure category is set to empty or first available
+        if (data.courses?.length > 0 && !data.courses.find(c => c.code === formData.category)) {
+          setFormData(prev => ({ ...prev, category: data.courses[0].code }))
+        }
+      } catch (err) {
+        console.error('Error fetching courses:', err)
+      }
+    }
+    fetchCourses()
+  }, [])
 
   if (!isOpen) {
     return null
@@ -80,9 +98,13 @@ const ConsumableModal = ({
                 onChange={(event) => handleChange("category", event.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-primary)]"
               >
-                <option value="EIM">EIM</option>
-                <option value="SMAW">SMAW</option>
-                <option value="CSS">CSS</option>
+                {courses.length === 0 ? (
+                  <option value="">No courses available</option>
+                ) : (
+                  courses.map(course => (
+                    <option key={course.id} value={course.code}>{course.name} ({course.code})</option>
+                  ))
+                )}
               </select>
             </label>
 
