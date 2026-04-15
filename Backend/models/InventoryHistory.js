@@ -58,6 +58,14 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
     allowNull: false,
     defaultValue: 'System',
   },
+  performedById: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id',
+    },
+  },
   startDate: {
     type: DataTypes.DATE,
     allowNull: true,
@@ -72,5 +80,13 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
   updatedAt: false,
   underscored: true,
 });
+
+// Define association with User for performer
+InventoryHistory.associate = (models) => {
+  InventoryHistory.belongsTo(models.User, {
+    foreignKey: 'performedById',
+    as: 'performer',
+  });
+};
 
 module.exports = InventoryHistory;

@@ -14,6 +14,9 @@ const courseRoutes = require('./routes/courseRoutes');
 const User = require('./models/User');
 const Trainer = require('./models/Trainer');
 const Course = require('./models/Course');
+const Consumable = require('./models/Consumable');
+const InventoryHistory = require('./models/InventoryHistory');
+const Notification = require('./models/Notification');
 
 const app = express();
 const server = http.createServer(app);
@@ -85,6 +88,14 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     console.log('✔  Database connection established.');
+
+    // Set up associations
+    const models = { User, Trainer, Course, Consumable, InventoryHistory, Notification };
+    Object.values(models).forEach(model => {
+      if (model.associate) {
+        model.associate(models);
+      }
+    });
 
     // Sync models with database
     await sequelize.sync({ alter: true });

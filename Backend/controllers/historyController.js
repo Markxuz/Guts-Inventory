@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const InventoryHistory = require('../models/InventoryHistory');
 const Consumable = require('../models/Consumable');
+const User = require('../models/User');
 
 const getHistory = async (req, res) => {
   try {
@@ -28,6 +29,15 @@ const getHistory = async (req, res) => {
 
     const historyRows = await InventoryHistory.findAll({
       where: historyWhere,
+      include: [
+        {
+          model: User,
+          as: 'performer',
+          attributes: ['id', 'username'],
+          required: false,
+          foreignKey: 'performedById',
+        },
+      ],
       order: [['createdAt', 'DESC']],
       limit: 300,
     });
@@ -46,6 +56,10 @@ const getHistory = async (req, res) => {
     const logs = historyRows.map((row) => {
       const plain = row.get({ plain: true });
       const consumableData = nameMap[plain.consumableId] || { itemName: 'Unknown Item', unit: 'N/A' };
+      
+      // Get performer name: use current username from User table if performedById exists, otherwise use stored name
+      const performerName = plain.performer?.username || plain.performedBy || 'System';
+      
       return {
         id: plain.id,
         consumableId: plain.consumableId,
@@ -59,8 +73,10 @@ const getHistory = async (req, res) => {
         course: plain.course || '',
         trainer: plain.trainer || '',
         purpose: plain.purpose || '',
-        performedBy: plain.performedBy || 'System',
+        performedBy: performerName,
         location: plain.location || 'main',
+        startDate: plain.startDate,
+        endDate: plain.endDate,
         createdAt: plain.createdAt,
       };
     });

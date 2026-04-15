@@ -33,6 +33,7 @@ const checkoutConsumable = async (req, res) => {
       quantityChanged: -parsedQty,
       description: `Destination: ${destination}${notes ? ' | Notes: ' + notes : ''}`,
       performedBy: performedByUser,
+      performedById: req.user?.id || null,
       startDate: null,
       endDate: null,
     });
@@ -132,13 +133,14 @@ const parsePayload = ({ itemName, category, quantity, unit, reorderLevel }) => (
   reorderLevel: reorderLevel !== undefined ? parseInt(reorderLevel, 10) : 10,
 });
 
-const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose, location, startDate, endDate }) => {
+const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, performedById, beginningInventory, endingInventory, course, trainer, purpose, location, startDate, endDate }) => {
   await InventoryHistory.create({
     consumableId,
     actionType,
     quantityChanged,
     description: description || null,
     performedBy: performedBy || 'System',
+    performedById: performedById || null,
     beginningInventory: beginningInventory || null,
     endingInventory: endingInventory || null,
     course: course || null,
@@ -242,6 +244,7 @@ const addConsumable = async (req, res) => {
       quantityChanged: item.quantity,
       description: 'Initial stock from new consumable creation.',
       performedBy: req.body.performedBy,
+      performedById: req.user?.id || null,
       location: location || 'main',
       startDate: null,
       endDate: null,
@@ -385,6 +388,7 @@ const updateStock = async (req, res) => {
       quantityChanged: type === 'in' ? parsedAmount : -parsedAmount,
       description: req.body.description || null,
       performedBy: performedByUser,
+      performedById: req.user?.id || null,
       beginningInventory: beginningQty,
       endingInventory: newQuantity,
       course: req.body.course || null,
@@ -407,6 +411,7 @@ const updateStock = async (req, res) => {
         quantityChanged: parsedAmount,
         description: req.body.description ? `Transfer from main: ${req.body.description}` : `Transfer from main`,
         performedBy: performedByUser,
+        performedById: req.user?.id || null,
         beginningInventory: oppositeBeginningQty,
         endingInventory: oppositeBeginningQty + parsedAmount,
         course: req.body.course || null,
@@ -479,6 +484,7 @@ const archiveItem = async (req, res) => {
       quantityChanged: 0,
       description: 'Item archived from inventory list.',
       performedBy: req.body?.performedBy,
+      performedById: req.user?.id || null,
       startDate: null,
       endDate: null,
     });
