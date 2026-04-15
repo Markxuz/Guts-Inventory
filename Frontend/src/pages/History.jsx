@@ -107,39 +107,39 @@ const History = () => {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="font-title text-3xl font-bold text-[var(--brand-primary)]">Activity Logs</h2>
-        <p className="mt-1 text-sm text-slate-600">Complete system activity history including all item movements, updates, and actions.</p>
+        <h2 className="font-title text-3xl font-bold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Activity Logs</h2>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 transition-colors duration-300">Complete system activity history including all item movements, updates, and actions.</p>
       </div>
 
       {/* Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4 transition-colors duration-300 dark:bg-slate-800 dark:border-slate-700">
         {/* Search Bar */}
         <div>
-          <label className="text-sm font-semibold text-slate-700 block mb-2">Search by Username or Action:</label>
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-2 transition-colors duration-300">Search by Username or Action:</label>
           <input
             type="text"
             placeholder="Enter username or search..."
             value={searchUsername}
             onChange={(e) => setSearchUsername(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-colors duration-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
           />
         </div>
 
         {/* Date Filter and Sort Toggle */}
         <div className="flex gap-4 items-end">
           <div className="flex-1">
-            <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Date:</label>
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-2 transition-colors duration-300">Filter by Date:</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-colors duration-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
             />
           </div>
           <div>
             <button
               onClick={() => setSortDate(sortDate === 'DESC' ? 'ASC' : 'DESC')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors duration-300 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200"
               title={`Sort by date (${sortDate === 'DESC' ? 'Newest' : 'Oldest'} first)`}
             >
               <ArrowUpDown className="h-4 w-4" />
@@ -150,14 +150,14 @@ const History = () => {
 
         {/* Action Type Filter */}
         <div>
-          <p className="mb-3 text-sm font-semibold text-slate-700">Filter by Action Type:</p>
+          <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors duration-300">Filter by Action Type:</p>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedAction('')}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                 selectedAction === ''
-                  ? 'bg-[var(--brand-primary)] text-white'
-                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  ? 'bg-[var(--brand-primary)] text-white dark:bg-red-600'
+                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600'
               }`}
             >
               All Actions
@@ -168,10 +168,10 @@ const History = () => {
                 <button
                   key={action}
                   onClick={() => setSelectedAction(action)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                     selectedAction === action
                       ? `${colors.badge} text-white`
-                      : `${colors.color} ${colors.textColor} hover:opacity-80`
+                      : `${colors.color} ${colors.textColor} hover:opacity-80 dark:opacity-70 dark:hover:opacity-100`
                   }`}
                 >
                   {action}
@@ -189,7 +189,7 @@ const History = () => {
               setSelectedDate('')
               setSelectedAction('')
             }}
-            className="text-xs text-red-600 hover:text-red-700 font-medium"
+            className="text-xs text-red-600 hover:text-red-700 font-medium dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300"
           >
             Clear All Filters
           </button>
@@ -221,6 +221,7 @@ const History = () => {
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Action</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Quantity Changed</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Performed By</th>
+                  <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Duration</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Details</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Date & Time</th>
                   <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Action</th>
@@ -246,6 +247,11 @@ const History = () => {
                         <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
                           {log.performedBy || 'System'}
                         </div>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                        {log.startDate && log.endDate
+                          ? `${new Date(log.startDate).toLocaleDateString('en-PH')} - ${new Date(log.endDate).toLocaleDateString('en-PH')}`
+                          : '-'}
                       </td>
                       <td className="px-5 py-4 text-slate-600 max-w-xs truncate">
                         {log.description || '-'}

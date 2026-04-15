@@ -5,6 +5,7 @@ import { getInventoryByTrack } from "../api/inventoryApi"
 import { getHistoryLogs, updateHistoryRecord } from "../api/historyApi"
 import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { useAuth } from "../context/AuthContext"
+import { useToast } from "../context/ToastContext"
 import { normalizeItems } from "../utils/inventory"
 
 const ROWS_PER_PAGE = 20
@@ -13,6 +14,7 @@ const HistoryPage = () => {
   const { track, itemId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { success } = useToast()
   const { selectedInventory } = useInventoryLocation()
   const [item, setItem] = useState(null)
   const [allHistory, setAllHistory] = useState([])
@@ -157,7 +159,7 @@ const HistoryPage = () => {
         }
 
         // Show success message
-        alert(successMessage)
+        success(successMessage)
       } catch (error) {
         console.error('Failed to save edit:', error)
         const errorMsg = error.response?.data?.error || 'Failed to save changes. Please try again.'

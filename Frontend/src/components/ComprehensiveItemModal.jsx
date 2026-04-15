@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { X, TrendingUp, TrendingDown } from "lucide-react"
 import Button from "./Button"
+import { useToast } from "../context/ToastContext"
 import { getTrainers } from "../api/authApi"
 
 const ComprehensiveItemModal = ({
@@ -11,6 +12,7 @@ const ComprehensiveItemModal = ({
   onDeductStock,
   action, // "add" or "deduct"
 }) => {
+  const { warning } = useToast()
   const [activeAction, setActiveAction] = useState(action || null)
   const [formData, setFormData] = useState({
     quantity: "",
@@ -18,6 +20,8 @@ const ComprehensiveItemModal = ({
     course: "",
     notes: "",
     purpose: "Training",
+    startDate: "",
+    endDate: "",
   })
   const [trainers, setTrainers] = useState([])
   const [loadingTrainers, setLoadingTrainers] = useState(false)
@@ -49,6 +53,8 @@ const ComprehensiveItemModal = ({
         course: "",
         notes: "",
         purpose: "Training",
+        startDate: "",
+        endDate: "",
       })
     }
   }, [isOpen, action])
@@ -67,12 +73,14 @@ const ComprehensiveItemModal = ({
       course: "",
       notes: "",
       purpose: "Training",
+      startDate: "",
+      endDate: "",
     })
   }
 
   const handleSubmit = (type) => {
     if (!formData.quantity) {
-      alert("Please fill in Quantity field")
+      warning('Please fill in Quantity field')
       return
     }
 
@@ -299,6 +307,32 @@ const ComprehensiveItemModal = ({
                       value={formData.course}
                       onChange={(e) => handleChange("course", e.target.value)}
                       placeholder="Enter course name"
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleChange("startDate", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
+                    />
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleChange("endDate", e.target.value)}
                       className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
                     />
                   </div>

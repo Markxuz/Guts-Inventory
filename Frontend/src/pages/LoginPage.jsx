@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
+import { login as loginApi } from "../api/authApi"
 
 const LoginPage = () => {
   const [username, setUsername] = useState("")
@@ -18,20 +19,7 @@ const LoginPage = () => {
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || "Login failed")
-        return
-      }
+      const data = await loginApi(username, password)
 
       // Update auth context and localStorage
       login(data.user, data.token)
@@ -40,7 +28,7 @@ const LoginPage = () => {
       navigate("/dashboard", { replace: true })
     } catch (err) {
       console.error("Login error:", err)
-      setError("Network error. Please try again.")
+      setError(err.response?.data?.error || "Login failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -61,7 +49,7 @@ const LoginPage = () => {
               />
             </div>
             <h1 className="text-4xl font-bold text-white">
-              GUTS Inventory
+              GUTS Consumables
             </h1>
             <p className="text-white/90 text-sm mt-2 font-medium">
               Guardians Technical School - TESDA Training Center

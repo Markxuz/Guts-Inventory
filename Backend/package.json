@@ -7,6 +7,7 @@
     "dev": "nodemon server.js",
     "seed": "node seed.js",
     "init-auth": "node init-auth.js",
+    "init-courses": "node init-courses.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "main": "server.js",

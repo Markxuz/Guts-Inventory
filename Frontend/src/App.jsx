@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import { useAuth } from "./context/AuthContext"
 import { InventoryLocationProvider } from "./context/InventoryLocationContext"
+import { ToastContainer } from "./components/ToastContainer"
 import LoginPage from "./pages/LoginPage"
 import MainLayout from "./layouts/MainLayout"
 import Dashboard from "./pages/Dashboard"
@@ -27,6 +28,7 @@ const App = () => {
 
   return (
     <InventoryLocationProvider>
+      <ToastContainer />
       <Routes>
         {/* Login Route */}
         <Route path="/login" element={

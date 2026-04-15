@@ -21,11 +21,8 @@ const Navbar = () => {
     <>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6 print:hidden">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-            GUTS TESDA Inventory
-          </p>
           <h1 className="font-title text-xl font-semibold text-slate-800">
-            Inventory Management Dashboard
+            Consumables Management Dashboard
           </h1>
         </div>
 

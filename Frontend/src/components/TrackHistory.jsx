@@ -202,6 +202,9 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
                         Performed By
                       </th>
                       <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">
+                        Duration
+                      </th>
+                      <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">
                         Description
                       </th>
                       <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Date</th>
@@ -222,6 +225,13 @@ const TrackHistory = ({ track, title, inventoryItems = [], logHeight }) => {
                         </td>
                         <td className="px-5 py-4 text-slate-700">{log.quantityChanged}</td>
                         <td className="px-5 py-4 text-slate-700">{log.performedBy || "System"}</td>
+                        <td className="px-5 py-4 text-slate-600">
+                          {log.startDate && log.endDate
+                            ? `${new Date(log.startDate).toLocaleDateString("en-PH")} - ${new Date(
+                                log.endDate
+                              ).toLocaleDateString("en-PH")}`
+                            : "—"}
+                        </td>
                         <td className="px-5 py-4 text-slate-600">{log.description || "—"}</td>
                         <td className="px-5 py-4 text-slate-600">
                           {new Date(log.createdAt).toLocaleString("en-PH")}

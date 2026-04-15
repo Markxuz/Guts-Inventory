@@ -58,6 +58,14 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
     allowNull: false,
     defaultValue: 'System',
   },
+  startDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  endDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'inventory_history',
   timestamps: true,

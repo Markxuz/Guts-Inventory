@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { X, Trash2, Edit2, Plus } from 'lucide-react'
 import Button from './Button'
+import { useToast } from '../context/ToastContext'
 import AddUserModal from './AddUserModal'
 import { getUsers, deleteUser } from '../api/authApi'
 
 const UserManagementModal = ({ isOpen, onClose }) => {
+  const { success, error: showError, warning } = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
@@ -43,7 +45,9 @@ const UserManagementModal = ({ isOpen, onClose }) => {
 
   const handleAddUserSuccess = (fullName, role, action = 'User created') => {
     setTimeout(() => {
-      alert(`✓ ${action} successfully!`)
+      // Show success notification based on action
+      const action = editingUser ? 'User updated' : 'User created'
+      success(`${action} successfully!`)
       fetchUsers()
     }, 500)
   }
@@ -52,11 +56,11 @@ const UserManagementModal = ({ isOpen, onClose }) => {
     if (window.confirm(`Are you sure you want to deactivate user "${userName}"? This action cannot be undone.`)) {
       try {
         await deleteUser(userId)
-        alert(`✓ User "${userName}" has been deactivated.`)
+        success(`User "${userName}" has been deactivated.`)
         fetchUsers()
-      } catch (err) {
-        const errorMsg = err.response?.data?.error || 'Failed to delete user'
-        alert(`✗ Error: ${errorMsg}`)
+      } catch (error) {
+        const errorMsg = error.response?.data?.error || 'Failed to deactivate user'
+        showError(`Error: ${errorMsg}`)
       }
     }
   }

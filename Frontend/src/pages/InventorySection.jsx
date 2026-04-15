@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import Button from "../components/Button"
 import ConsumableTable from "../components/ConsumableTable"
@@ -8,11 +8,13 @@ import { getInventoryByTrack } from "../api/inventoryApi"
 import { addConsumable, archiveConsumable, updateConsumable } from "../api/inventoryCrudApi"
 import { getHistoryLogs } from "../api/historyApi"
 import { useSearch } from "../context/SearchContext"
+import { useToast } from "../context/ToastContext"
 import { useNotifications } from "../context/NotificationContext"
 import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { normalizeItems } from "../utils/inventory"
 
 const InventorySection = ({ title, description, track }) => {
+  const { error: showError } = useToast()
   const [items, setItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -38,23 +40,24 @@ const InventorySection = ({ title, description, track }) => {
     loadItems()
   }, [track, selectedInventory])
 
-  // Listen for real-time stock updates
-  useEffect(() => {
-    const handleStockUpdate = (data) => {
-      console.log('📦 Updating inventory section with stock update:', data)
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === data.id ? { ...item, quantity: data.quantity } : item
-        )
+  // Create stable callback for stock updates
+  const handleStockUpdate = useCallback((data) => {
+    console.log('📦 Updating inventory section with stock update:', data)
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === data.id ? { ...item, quantity: data.quantity } : item
       )
-    }
-    
-    setOnStockUpdate(() => handleStockUpdate)
+    )
+  }, [])
+
+  // Register stock update listener
+  useEffect(() => {
+    setOnStockUpdate(handleStockUpdate)
     
     return () => {
       setOnStockUpdate(null)
     }
-  }, [setOnStockUpdate])
+  }, [handleStockUpdate, setOnStockUpdate])
 
   const filteredItems = items.filter((item) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -70,7 +73,7 @@ const InventorySection = ({ title, description, track }) => {
       setIsAddOpen(false)
       await loadItems()
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to add item.")
+      showError(error.response?.data?.error || "Failed to add item.")
     }
   }
 
@@ -80,7 +83,7 @@ const InventorySection = ({ title, description, track }) => {
       setEditingItem(null)
       await loadItems()
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to update item.")
+      showError(error.response?.data?.error || "Failed to update item.")
     }
   }
 
@@ -95,7 +98,7 @@ const InventorySection = ({ title, description, track }) => {
       await archiveConsumable(item.id)
       await loadItems()
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to archive item.")
+      showError(error.response?.data?.error || "Failed to archive item.")
     }
   }
 

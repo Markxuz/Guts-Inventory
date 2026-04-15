@@ -217,16 +217,44 @@ const updateInventoryHistory = async (req, res) => {
       cascadeCount++;
     }
 
-    // Update Consumable.quantity to match the final ending inventory
-    await consumable.update({
+    // Update Consumable quantity fields based on location to match the final ending inventory
+    const finalUpdateData = {
       quantity: Math.max(0, lastEndingInventory),
-      quantityMain: Math.max(0, lastEndingInventory),
-    }, { transaction: t });
+    };
+    
+    // Update the appropriate location field based on the history record's location
+    if (record.location === 'annex') {
+      // For annex/training inventory: update quantityAnnex
+      finalUpdateData.quantityAnnex = Math.max(0, lastEndingInventory);
+    } else {
+      // For main inventory: update quantityMain (default)
+      finalUpdateData.quantityMain = Math.max(0, lastEndingInventory);
+    }
+    
+    await consumable.update(finalUpdateData, { transaction: t });
 
     console.log(`[Cascade Recalculation] Updated ${cascadeCount} subsequent records. Final quantity: ${lastEndingInventory}`);
 
     // Commit transaction
     await t.commit();
+
+    // Broadcast stock update to all connected users via Socket.IO
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('stock_updated', {
+        id: consumable.id,
+        itemName: consumable.itemName,
+        quantity: lastEndingInventory,
+        category: consumable.category,
+      });
+      // Also emit history update event
+      io.emit('history_updated', {
+        recordId: id,
+        consumableId: consumable.id,
+        quantityChanged,
+        endingInventory: newEndingInventory,
+      });
+    }
 
     // Return updated record with cascade info
     const updated = record.get({ plain: true });
@@ -255,7 +283,135 @@ const updateInventoryHistory = async (req, res) => {
   }
 };
 
+// ─── POST /api/history/:consumableId/recalculate ─────────────────────────────
+// Recalculates and syncs all ending inventory values for a consumable
+// Query param: ?location=main|annex (defaults to 'main')
+// Updates the consumable's current stock to match the final ending inventory
+const recalculateAndSyncInventory = async (req, res) => {
+  const t = await InventoryHistory.sequelize.transaction();
+  try {
+    const consumableId = parseInt(req.params.consumableId, 10);
+    const location = req.query.location || 'main'; // Get location from query param
+    
+    if (isNaN(consumableId)) {
+      return res.status(400).json({ error: 'Invalid consumableId' });
+    }
+
+    // Find the consumable
+    const consumable = await Consumable.findByPk(consumableId, { transaction: t });
+    if (!consumable) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Consumable not found' });
+    }
+
+    // Get all history records for this consumable and location, sorted by date
+    const historyRecords = await InventoryHistory.findAll({
+      where: { 
+        consumableId,
+        location: location, // Only get records for the specified location
+      },
+      order: [['createdAt', 'ASC']],
+      transaction: t,
+    });
+
+    if (historyRecords.length === 0) {
+      // No history records for this location - set ending inventory to current
+      await t.rollback();
+      return res.json({
+        message: `No history records for ${location} inventory to recalculate`,
+        consumableId,
+        location,
+        recordsUpdated: 0,
+        currentQuantity: location === 'main' ? consumable.quantityMain : consumable.quantityAnnex,
+      });
+    }
+
+    // Calculate beginning and ending inventory for each record
+    let lastEndingInventory = null;
+    let recordsToUpdate = [];
+
+    for (const record of historyRecords) {
+      const beginningInventory = lastEndingInventory !== null ? lastEndingInventory : 0;
+      const endingInventory = beginningInventory + record.quantityChanged;
+
+      recordsToUpdate.push({
+        id: record.id,
+        beginningInventory,
+        endingInventory: Math.max(0, endingInventory), // Prevent negative inventory
+      });
+
+      lastEndingInventory = Math.max(0, endingInventory);
+    }
+
+    // Update all history records in transaction
+    for (const update of recordsToUpdate) {
+      await InventoryHistory.update(
+        {
+          beginningInventory: update.beginningInventory,
+          endingInventory: update.endingInventory,
+        },
+        {
+          where: { id: update.id },
+          transaction: t,
+        }
+      );
+    }
+
+    // Update consumable quantity to final ending inventory (location-specific)
+    const finalQuantity = lastEndingInventory !== null ? lastEndingInventory : 0;
+    
+    const updateData = { quantity: finalQuantity };
+    if (location === 'main') {
+      updateData.quantityMain = finalQuantity;
+    } else {
+      updateData.quantityAnnex = finalQuantity;
+    }
+
+    await consumable.update(updateData, { transaction: t });
+
+    // Commit transaction
+    await t.commit();
+
+    // Broadcast update via Socket.IO
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('stock_updated', {
+        id: consumable.id,
+        itemName: consumable.itemName,
+        quantity: finalQuantity,
+        location: location,
+        category: consumable.category,
+      });
+      io.emit('history_recalculated', {
+        consumableId,
+        location,
+        finalQuantity,
+        recordsUpdated: recordsToUpdate.length,
+      });
+    }
+
+    console.log(
+      `[RecalculateAndSyncInventory] Updated ${recordsToUpdate.length} ${location} inventory records for ${consumable.itemName}. Final quantity: ${finalQuantity}`
+    );
+
+    return res.json({
+      success: true,
+      message: `Inventory history recalculated and synced successfully for ${location} location`,
+      consumableId,
+      itemName: consumable.itemName,
+      location,
+      finalQuantity,
+      recordsUpdated: recordsToUpdate.length,
+    });
+  } catch (err) {
+    await t.rollback();
+    console.error('[recalculateAndSyncInventory]', err);
+    return res.status(500).json({ error: 'Failed to recalculate inventory' });
+  }
+};
+
 module.exports = {
   getHistory,
   updateInventoryHistory,
+  recalculateAndSyncInventory,
 };

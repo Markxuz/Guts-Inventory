@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+﻿import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
@@ -9,7 +9,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [socket, setSocket] = useState(null);
-  const [onStockUpdate, setOnStockUpdate] = useState(null);
+  const onStockUpdateRef = useRef(null);
 
   const getSocketUrl = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -68,8 +68,16 @@ export const NotificationProvider = ({ children }) => {
 
       socketInstance.on('stock_updated', (data) => {
         console.log('📦 Stock updated:', data);
-        if (onStockUpdate) {
-          onStockUpdate(data);
+        if (onStockUpdateRef.current) {
+          onStockUpdateRef.current(data);
+        }
+      });
+
+      socketInstance.on('history_updated', (data) => {
+        console.log('📝 History updated:', data);
+        // Also trigger stock update since history changes affect inventory
+        if (onStockUpdateRef.current) {
+          onStockUpdateRef.current(data);
         }
       });
 
@@ -85,7 +93,7 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Socket connection error:', error);
     }
-  }, [user, token, onStockUpdate]);
+  }, [user, token]);
 
   const getApiUrl = () => {
     return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -138,6 +146,11 @@ export const NotificationProvider = ({ children }) => {
       console.error('Error deleting notification:', err);
     }
   }, [token]);
+
+  // Function to set the stock update callback - just updates the ref, not state
+  const setOnStockUpdate = useCallback((callback) => {
+    onStockUpdateRef.current = callback;
+  }, []);
 
   return (
     <NotificationContext.Provider

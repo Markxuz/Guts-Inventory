@@ -3,9 +3,11 @@ import { RotateCcw } from "lucide-react"
 import { getArchivedInventory } from "../api/inventoryApi"
 import { restoreConsumable } from "../api/inventoryCrudApi"
 import { useSearch } from "../context/SearchContext"
+import { useToast } from "../context/ToastContext"
 import { normalizeItems } from "../utils/inventory"
 
 const Archive = () => {
+  const { success, error: showError } = useToast()
   const [items, setItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { searchQuery } = useSearch()
@@ -45,9 +47,10 @@ const Archive = () => {
 
     try {
       await restoreConsumable(item.id)
-      await loadArchived()
+      success('Item restored successfully!')
+      setItems(items.filter(i => i.id !== item.id))
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to restore item.")
+      showError(error.response?.data?.error || 'Failed to restore item.')
     }
   }
 

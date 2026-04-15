@@ -2,6 +2,7 @@ import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard
 import { NavLink, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
+import { useToast } from "../context/ToastContext"
 import { getActiveCourses } from "../api/courseApi"
 import AddUserModal from "./AddUserModal"
 import UserManagementModal from "./UserManagementModal"
@@ -19,6 +20,7 @@ const settingsItems = [
 
 const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNavigate }) => {
   const { user, logout } = useAuth()
+  const { success } = useToast()
   const navigate = useNavigate()
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
@@ -40,7 +42,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
 
   const handleAddUserSuccess = (fullName, role) => {
     // Show success toast/message
-    alert(`✓ User "${fullName}" created successfully as ${role}!`)
+    success(`User "${fullName}" created successfully as ${role}!`)
   }
 
   const handleCoursesUpdated = () => {

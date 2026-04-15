@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { X, Trash2, Edit2, Plus, CheckCircle2 } from 'lucide-react'
 import Button from './Button'
+import { useToast } from '../context/ToastContext'
 import { createTrainer, getAllTrainers, updateTrainer, deleteTrainer } from '../api/authApi'
 import { getActiveCourses } from '../api/courseApi'
 
 const TrainerManagementModal = ({ isOpen, onClose }) => {
+  const { success, error: showError } = useToast()
   const [trainers, setTrainers] = useState([])
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
@@ -117,7 +119,7 @@ const TrainerManagementModal = ({ isOpen, onClose }) => {
           phone: formData.phone || null,
           categories: formData.categories,
         })
-        alert('✓ Trainer updated successfully!')
+        success('Trainer updated successfully!')
       } else {
         await createTrainer({
           name: formData.name,
@@ -125,14 +127,14 @@ const TrainerManagementModal = ({ isOpen, onClose }) => {
           phone: formData.phone || null,
           categories: formData.categories,
         })
-        alert('✓ Trainer created successfully!')
+        success('Trainer created successfully!')
       }
 
       setIsFormOpen(false)
       fetchTrainers()
     } catch (err) {
       const errorMsg = err.response?.data?.error || `Failed to ${editingTrainer ? 'update' : 'create'} trainer`
-      alert(`✗ Error: ${errorMsg}`)
+      showError(`Error: ${errorMsg}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -142,11 +144,11 @@ const TrainerManagementModal = ({ isOpen, onClose }) => {
     if (window.confirm(`Are you sure you want to deactivate trainer "${trainerName}"?`)) {
       try {
         await deleteTrainer(trainerId)
-        alert(`✓ Trainer "${trainerName}" has been deactivated.`)
+        success(`Trainer "${trainerName}" has been deactivated.`)
         fetchTrainers()
       } catch (err) {
-        const errorMsg = err.response?.data?.error || 'Failed to delete trainer'
-        alert(`✗ Error: ${errorMsg}`)
+        const errorMsg = err.response?.data?.error || 'Failed to deactivate trainer'
+        showError(`Error: ${errorMsg}`)
       }
     }
   }

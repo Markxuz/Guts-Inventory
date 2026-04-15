@@ -33,7 +33,20 @@ const checkoutConsumable = async (req, res) => {
       quantityChanged: -parsedQty,
       description: `Destination: ${destination}${notes ? ' | Notes: ' + notes : ''}`,
       performedBy: performedByUser,
+      startDate: null,
+      endDate: null,
     });
+
+    // Broadcast stock update to all connected users via Socket.IO
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('stock_updated', {
+        id: item.id,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        category: item.category,
+      });
+    }
 
     return res.json(formatItem(item));
   } catch (err) {
@@ -119,7 +132,7 @@ const parsePayload = ({ itemName, category, quantity, unit, reorderLevel }) => (
   reorderLevel: reorderLevel !== undefined ? parseInt(reorderLevel, 10) : 10,
 });
 
-const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose, location }) => {
+const logHistory = async ({ consumableId, actionType, quantityChanged, description, performedBy, beginningInventory, endingInventory, course, trainer, purpose, location, startDate, endDate }) => {
   await InventoryHistory.create({
     consumableId,
     actionType,
@@ -132,6 +145,8 @@ const logHistory = async ({ consumableId, actionType, quantityChanged, descripti
     trainer: trainer || null,
     purpose: purpose || null,
     location: location || 'main',
+    startDate: startDate || null,
+    endDate: endDate || null,
   });
 };
 
@@ -179,12 +194,16 @@ const getInventoryByCategory = async (req, res) => {
   const archivedOnly = String(req.query.archived || '').toLowerCase() === 'true';
   const location = req.query.location || 'main';
 
+  console.log(`[getInventoryByCategory] Fetching ${upperCategory} at location ${location}, archivedOnly: ${archivedOnly}`);
+
   try {
     const rows = await Consumable.findAll({
       where: { category: upperCategory, isArchived: archivedOnly },
       order: [['itemName', 'ASC']],
     });
 
+    console.log(`[getInventoryByCategory] Found ${rows.length} items for category ${upperCategory}`);
+    
     return res.json({ items: rows.map(row => formatItem(row, location)) });
   } catch (err) {
     console.error('[getInventoryByCategory]', err);
@@ -205,6 +224,8 @@ const addConsumable = async (req, res) => {
   const upperCategory = String(category).toUpperCase();
 
   try {
+    console.log(`[addConsumable] Creating new item: ${itemName}, category: ${upperCategory}, location: ${location || 'main'}`);
+    
     const item = await Consumable.create(parsePayload({
       itemName,
       category: upperCategory,
@@ -213,6 +234,8 @@ const addConsumable = async (req, res) => {
       reorderLevel,
     }));
 
+    console.log(`[addConsumable] Item created successfully:`, { id: item.id, itemName: item.itemName, category: item.category });
+
     await logHistory({
       consumableId: item.id,
       actionType: 'Stock In',
@@ -220,6 +243,8 @@ const addConsumable = async (req, res) => {
       description: 'Initial stock from new consumable creation.',
       performedBy: req.body.performedBy,
       location: location || 'main',
+      startDate: null,
+      endDate: null,
     });
 
     // Send notification to admins
@@ -288,6 +313,17 @@ const updateConsumable = async (req, res) => {
       performedBy: req.body.performedBy,
     });
 
+    // Broadcast stock update to all connected users via Socket.IO
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('stock_updated', {
+        id: item.id,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        category: item.category,
+      });
+    }
+
     return res.json(formatItem(item));
   } catch (err) {
     if (err.name === 'SequelizeValidationError') {
@@ -342,7 +378,7 @@ const updateStock = async (req, res) => {
     item[quantityField] = newQuantity;
 
     // Log history for the current location
-    const performedByUser = req.user?.fullName || req.user?.username || 'System'
+    const performedByUser = req.user?.fullName || req.user?.username || 'System';
     await logHistory({
       consumableId: item.id,
       actionType: type === 'in' ? 'Stock In' : 'Stock Out',
@@ -355,6 +391,8 @@ const updateStock = async (req, res) => {
       trainer: req.body.trainer || null,
       purpose: req.body.purpose || null,
       location: currentLocation,
+      startDate: req.body.startDate || null,
+      endDate: req.body.endDate || null,
     });
 
     // TRANSFER LOGIC: If deducting from MAIN, transfer to TRAINING
@@ -375,6 +413,8 @@ const updateStock = async (req, res) => {
         trainer: req.body.trainer || null,
         purpose: req.body.purpose || null,
         location: oppositeLocation,
+        startDate: req.body.startDate || null,
+        endDate: req.body.endDate || null,
       });
     }
     // CONSUMPTION LOGIC: If deducting from TRAINING, just consume (no transfer back to main)
@@ -439,6 +479,8 @@ const archiveItem = async (req, res) => {
       quantityChanged: 0,
       description: 'Item archived from inventory list.',
       performedBy: req.body?.performedBy,
+      startDate: null,
+      endDate: null,
     });
 
     return res.json({ message: 'Item archived successfully.', id });

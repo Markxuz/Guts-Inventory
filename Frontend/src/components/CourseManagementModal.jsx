@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { X, Trash2, Edit2, Plus, CheckCircle2, RotateCcw } from 'lucide-react'
 import Button from './Button'
+import { useToast } from '../context/ToastContext'
 import { getAllCourses, createCourse, updateCourse, deleteCourse, getArchivedCourses, restoreCourse, hardDeleteCourse } from '../api/courseApi'
 
 const CourseManagementModal = ({ isOpen, onClose, onCoursesUpdated }) => {
+  const { success, error: showError } = useToast()
   const [courses, setCourses] = useState([])
   const [archivedCourses, setArchivedCourses] = useState([])
   const [loading, setLoading] = useState(false)
@@ -97,17 +99,17 @@ const CourseManagementModal = ({ isOpen, onClose, onCoursesUpdated }) => {
     try {
       if (editingCourse) {
         await updateCourse(editingCourse.id, formData)
-        alert('✓ Course updated successfully!')
+        success('Course updated successfully!')
       } else {
         await createCourse(formData)
-        alert('✓ Course created successfully!')
+        success('Course created successfully!')
       }
       onCoursesUpdated?.()
       setIsFormOpen(false)
       fetchCourses()
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to save course'
-      alert(`✗ Error: ${errorMsg}`)
+      showError(`Error: ${errorMsg}`)
       console.error('Error saving course:', err)
     } finally {
       setIsSubmitting(false)
@@ -119,13 +121,13 @@ const CourseManagementModal = ({ isOpen, onClose, onCoursesUpdated }) => {
 
     try {
       await deleteCourse(courseId)
-      alert('✓ Course deleted successfully!')
+      success('Course deleted successfully!')
       onCoursesUpdated?.()
       fetchCourses()
       fetchArchivedCourses()
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to delete course'
-      alert(`✗ Error: ${errorMsg}`)
+      showError(`Error: ${errorMsg}`)
       console.error('Error deleting course:', err)
     }
   }
@@ -133,12 +135,12 @@ const CourseManagementModal = ({ isOpen, onClose, onCoursesUpdated }) => {
   const handleRestoreCourse = async (courseId) => {
     try {
       await restoreCourse(courseId)
-      alert('✓ Course restored successfully!')
+      success('Course restored successfully!')
       fetchCourses()
       fetchArchivedCourses()
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to restore course'
-      alert(`✗ Error: ${errorMsg}`)
+      showError(`Error: ${errorMsg}`)
       console.error('Error restoring course:', err)
     }
   }
@@ -148,11 +150,11 @@ const CourseManagementModal = ({ isOpen, onClose, onCoursesUpdated }) => {
 
     try {
       await hardDeleteCourse(courseId)
-      alert('✓ Course permanently deleted!')
+      success('Course permanently deleted!')
       fetchArchivedCourses()
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to delete course'
-      alert(`✗ Error: ${errorMsg}`)
+      showError(`Error: ${errorMsg}`)
       console.error('Error permanently deleting course:', err)
     }
   }

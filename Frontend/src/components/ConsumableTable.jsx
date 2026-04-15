@@ -1,8 +1,8 @@
 import { Archive, Pencil } from "lucide-react"
 
 const statusClassMap = {
-  "In Stock": "bg-emerald-50 text-emerald-700",
-  "Low Stock": "bg-[#fbe9ed] text-[#800000]"
+  "In Stock": "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+  "Low Stock": "bg-[#fbe9ed] text-[#800000] dark:bg-red-950/30 dark:text-red-400"
 }
 
 const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = true, coursesMap = {} }) => {
@@ -20,44 +20,44 @@ const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = t
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--brand-secondary-soft)] bg-white">
+    <div className="overflow-hidden rounded-2xl border border-[var(--brand-secondary-soft)] bg-white transition-colors duration-300 dark:bg-slate-800 dark:border-slate-700">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-          <thead className="bg-[#f8eef0]">
+        <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-700">
+          <thead className="bg-[#f8eef0] transition-colors duration-300 dark:bg-slate-900/50">
             <tr>
-              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Item Name</th>
-              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Course</th>
-              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Quantity</th>
-              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Unit</th>
-              <th className="px-5 py-4 font-semibold text-[var(--brand-primary)]">Status</th>
-              {showActions ? <th className="px-5 py-4 font-semibold text-[var(--brand-primary)] print:hidden">Actions</th> : null}
+              <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Item Name</th>
+              <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Course</th>
+              <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Quantity</th>
+              <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Unit</th>
+              <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300">Status</th>
+              {showActions ? <th className="px-3 py-2 font-semibold text-[var(--brand-primary)] dark:text-red-400 transition-colors duration-300 print:hidden">Actions</th> : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-700 dark:bg-slate-800 transition-colors duration-300">
             {items.map((item) => (
               <tr
                 key={item.id}
                 onClick={(e) => handleRowClick(item, e)}
-                className="cursor-pointer hover:bg-[#fce4e8]/40 transition"
+                className="cursor-pointer hover:bg-[#fce4e8]/40 dark:hover:bg-slate-700/50 transition-colors duration-300"
               >
-                <td className="px-5 py-4 font-medium text-slate-700">{item.itemName}</td>
-                <td className="px-5 py-4 text-slate-700">{getCourseDisplay(item)}</td>
-                <td className="px-5 py-4 text-slate-700">{item.quantity}</td>
-                <td className="px-5 py-4 text-slate-600">{item.unit}</td>
-                <td className="px-5 py-4">
+                <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200 transition-colors duration-300">{item.itemName}</td>
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-300 transition-colors duration-300">{getCourseDisplay(item)}</td>
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-300 transition-colors duration-300">{item.quantity}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-400 transition-colors duration-300">{item.unit}</td>
+                <td className="px-3 py-2">
                   <span
-                    className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${statusClassMap[item.status]}`}
+                    className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold transition-colors duration-300 ${statusClassMap[item.status]}`}
                   >
                     {item.status}
                   </span>
                 </td>
                 {showActions ? (
-                  <td className="px-5 py-4 print:hidden" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-2 print:hidden" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => onEdit?.(item)}
-                        className="inline-flex rounded-lg border border-[var(--brand-secondary-soft)] p-2 text-slate-600 transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]"
+                        className="inline-flex rounded-lg border border-[var(--brand-secondary-soft)] p-2 text-slate-600 transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] dark:border-slate-600 dark:text-slate-400 dark:hover:border-red-400 dark:hover:text-red-400"
                         aria-label={`Edit ${item.itemName}`}
                       >
                         <Pencil className="h-4 w-4" />
@@ -65,7 +65,7 @@ const ConsumableTable = ({ items, onEdit, onArchive, onRowClick, showActions = t
                       <button
                         type="button"
                         onClick={() => onArchive?.(item)}
-                        className="inline-flex rounded-lg border border-rose-200 p-2 text-rose-700 transition hover:bg-rose-50"
+                        className="inline-flex rounded-lg border border-rose-200 p-2 text-rose-700 transition hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                         aria-label={`Archive ${item.itemName}`}
                       >
                         <Archive className="h-4 w-4" />

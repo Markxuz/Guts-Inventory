@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, RefreshCw } from "lucide-react"
 import Button from "../components/Button"
 import { getInventoryByTrack } from "../api/inventoryApi"
-import { getHistoryLogs } from "../api/historyApi"
+import { getHistoryLogs, recalculateInventoryHistory } from "../api/historyApi"
 import { updateStock } from "../api/inventoryCrudApi"
 import { normalizeItems } from "../utils/inventory"
 import { useInventoryLocation } from "../context/InventoryLocationContext"
+import { useToast } from "../context/ToastContext"
 import { useAuth } from "../context/AuthContext"
 import ComprehensiveItemModal from "../components/ComprehensiveItemModal"
 
 const ItemDetailPage = () => {
+  const { success, error: showError } = useToast()
   const { track, itemId } = useParams()
   const navigate = useNavigate()
   const { selectedInventory } = useInventoryLocation()
@@ -21,6 +23,7 @@ const ItemDetailPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalAction, setModalAction] = useState(null) // "add" or "deduct"
   const [purposeFilter, setPurposeFilter] = useState('All')
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     const loadItemDetails = async () => {
@@ -59,6 +62,8 @@ const ItemDetailPage = () => {
         trainer: formData.trainer,
         purpose: formData.purpose,
         location: selectedInventory,
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
       })
       
       // Reload item details
@@ -72,9 +77,9 @@ const ItemDetailPage = () => {
       
       setIsModalOpen(false)
       setModalAction(null)
-      alert("Stock added successfully!")
+      success("Stock added successfully!")
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to add stock.")
+      showError(error.response?.data?.error || "Failed to add stock.")
     }
   }
 
@@ -90,6 +95,8 @@ const ItemDetailPage = () => {
         trainer: formData.trainer,
         purpose: formData.purpose,
         location: selectedInventory,
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
       })
       
       // Reload item details
@@ -103,9 +110,9 @@ const ItemDetailPage = () => {
       
       setIsModalOpen(false)
       setModalAction(null)
-      alert("Stock deducted successfully!")
+      success("Stock deducted successfully!")
     } catch (error) {
-      alert(error.response?.data?.error || "Failed to deduct stock.")
+      showError(error.response?.data?.error || "Failed to deduct stock.")
     }
   }
 
@@ -126,6 +133,31 @@ const ItemDetailPage = () => {
   
   const handlePurposeChange = (newPurpose) => {
     setPurposeFilter(newPurpose)
+  }
+
+  const handleSyncInventory = async () => {
+    if (!item) return
+    
+    setIsSyncing(true)
+    try {
+      const result = await recalculateInventoryHistory(item.id, selectedInventory)
+      
+      // Reload item details
+      const inventory = await getInventoryByTrack(track, selectedInventory)
+      const items = normalizeItems(inventory)
+      const updatedItem = items.find(i => i.id === item.id)
+      setItem(updatedItem)
+      
+      // Reload history
+      const logs = await getHistoryLogs({ itemId: item.id })
+      setItemHistory(logs || [])
+      
+      success(`✓ Inventory synced!\n📦 Current stock: ${result.finalQuantity} units\n📊 Updated ${result.recordsUpdated} records`)
+    } catch (error) {
+      showError(error.response?.data?.error || "Failed to sync inventory history.")
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   if (isLoading) {
@@ -216,7 +248,7 @@ const ItemDetailPage = () => {
       </div>
 
       {/* Add/Deduct Stock Buttons */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <button
           onClick={() => openModal("add")}
           className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 text-left transition hover:border-emerald-400 hover:bg-emerald-100"
@@ -230,6 +262,17 @@ const ItemDetailPage = () => {
         >
           <h3 className="text-lg font-bold text-red-700 mb-2"> Deduct Stock</h3>
           <p className="text-sm text-red-600">Decrease inventory quantity</p>
+        </button>
+        <button
+          onClick={handleSyncInventory}
+          disabled={isSyncing}
+          className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-6 text-left transition hover:border-blue-400 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <h3 className="text-lg font-bold text-blue-700 mb-2 flex items-center gap-2">
+            <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+            Sync Inventory
+          </h3>
+          <p className="text-sm text-blue-600">Recalculate ending inventory</p>
         </button>
       </div>
 

@@ -90,7 +90,7 @@ const NotificationBell = () => {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+        className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition dark:text-slate-400 dark:hover:bg-slate-700 transition-colors duration-300"
         title="Notifications"
       >
         <Bell size={20} />
@@ -103,9 +103,9 @@ const NotificationBell = () => {
 
       {/* Notification Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200">
+        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200 transition-colors duration-300 dark:bg-slate-800 dark:border-slate-700">
           {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-gray-900 to-gray-800 text-white px-4 py-3 rounded-t-lg">
+          <div className="sticky top-0 bg-gradient-to-r from-gray-900 to-gray-800 text-white px-4 py-3 rounded-t-lg dark:from-slate-900 dark:to-slate-800">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Notifications</h3>
               {unreadCount > 0 && (
@@ -122,19 +122,19 @@ const NotificationBell = () => {
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
+              <div className="p-6 text-center text-gray-500 dark:text-slate-400 transition-colors duration-300">
                 <Bell size={32} className="mx-auto mb-2 opacity-50" />
                 <p>No notifications yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-slate-700 transition-colors duration-300">
                 {notifications.map((notif) => (
                   <div
                     key={notif.id}
                     onClick={() => handleNotificationClick(notif)}
-                    className={`border-l-4 border-l-gray-300 p-3 flex gap-3 cursor-pointer hover:bg-gray-100 transition ${
+                    className={`border-l-4 border-l-gray-300 p-3 flex gap-3 cursor-pointer hover:bg-gray-100 transition dark:hover:bg-slate-700 dark:border-l-slate-600 transition-colors duration-300 ${
                       getNotificationColor(notif.type)
-                    } ${!notif.isRead ? 'font-medium' : 'opacity-75'}`}
+                    } ${!notif.isRead ? 'font-medium' : 'opacity-75'} dark:bg-slate-700/50`}
                   >
                     {/* Icon */}
                     <div className="text-2xl flex-shrink-0 mt-0.5">
@@ -143,8 +143,8 @@ const NotificationBell = () => {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 break-words">{notif.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm text-gray-900 dark:text-slate-200 break-words transition-colors duration-300">{notif.message}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 transition-colors duration-300">
                         {formatTime(notif.createdAt)}
                       </p>
                     </div>
