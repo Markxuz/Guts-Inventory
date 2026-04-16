@@ -10,11 +10,12 @@ const {
   restoreItem,
   deleteItem,
 } = require('../controllers/inventoryController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
 // Checkout a consumable (deducts stock, logs destination, notes)
 // POST /api/inventory/:id/checkout
-router.post('/:id/checkout', verifyToken, checkoutConsumable);
+// Admin only - staff cannot checkout items
+router.post('/:id/checkout', verifyToken, requireRole('admin'), checkoutConsumable);
 
 // ┌──────────────────────────────────────────────────────────┐
 // │  Base path: /api/inventory  (mounted in server.js)       │
@@ -41,6 +42,7 @@ router.patch('/:id/restore', restoreItem);
 
 // Stock-in / stock-out for a specific item
 // Body: { type: 'in' | 'out', amount: number }
+// Staff can only modify training inventory (annex), admins can modify both
 router.patch('/:id/stock', verifyToken, updateStock);
 
 // Remove an item

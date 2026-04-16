@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react"
-import { X, TrendingUp, TrendingDown } from "lucide-react"
+import { X, TrendingUp, TrendingDown, Lock } from "lucide-react"
 import Button from "./Button"
 import { useToast } from "../context/ToastContext"
+import { useAuth } from "../context/AuthContext"
+import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { getTrainers } from "../api/authApi"
 
 const ComprehensiveItemModal = ({
@@ -13,6 +15,12 @@ const ComprehensiveItemModal = ({
   action, // "add" or "deduct"
 }) => {
   const { warning } = useToast()
+  const { user } = useAuth()
+  const { selectedInventory } = useInventoryLocation()
+  
+  // Check if staff is accessing main inventory (read-only)
+  const isStaffAccessingMain = user?.role === 'staff' && selectedInventory === 'main'
+  
   const [activeAction, setActiveAction] = useState(action || null)
   const [formData, setFormData] = useState({
     quantity: "",
@@ -43,9 +51,10 @@ const ComprehensiveItemModal = ({
     fetchTrainers()
   }, [])
 
-  // Reset form when modal opens
+  // Reset form when modal opens and set dates to today
   useEffect(() => {
     if (isOpen) {
+      const today = new Date().toISOString().split('T')[0]
       setActiveAction(action || null)
       setFormData({
         quantity: "",
@@ -53,8 +62,8 @@ const ComprehensiveItemModal = ({
         course: "",
         notes: "",
         purpose: "Training",
-        startDate: "",
-        endDate: "",
+        startDate: today,
+        endDate: today,
       })
     }
   }, [isOpen, action])
@@ -66,6 +75,7 @@ const ComprehensiveItemModal = ({
   }
 
   const handleReset = () => {
+    const today = new Date().toISOString().split('T')[0]
     setActiveAction(null)
     setFormData({
       quantity: "",
@@ -73,8 +83,8 @@ const ComprehensiveItemModal = ({
       course: "",
       notes: "",
       purpose: "Training",
-      startDate: "",
-      endDate: "",
+      startDate: today,
+      endDate: today,
     })
   }
 
@@ -170,31 +180,41 @@ const ComprehensiveItemModal = ({
                 <h3 className="mb-4 font-title text-lg font-bold text-slate-800">
                   Stock Management
                 </h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAction("add")}
-                    className="group flex items-center justify-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-5 py-4 transition hover:border-emerald-400 hover:bg-emerald-100"
-                  >
-                    <TrendingUp className="h-5 w-5 text-emerald-600 transition group-hover:scale-110" />
-                    <div className="text-left">
-                      <p className="font-semibold text-emerald-700">Add Stock</p>
-                      <p className="text-xs text-emerald-600">Increase quantity (Restock)</p>
+                {isStaffAccessingMain ? (
+                  <div className="rounded-xl border-2 border-yellow-300 bg-yellow-50 p-4 flex items-center gap-3">
+                    <Lock className="h-5 w-5 text-yellow-600" />
+                    <div>
+                      <p className="font-semibold text-yellow-800">Read-Only Access</p>
+                      <p className="text-sm text-yellow-700">Staff members can only modify training inventory. Contact an administrator to manage main inventory.</p>
                     </div>
-                  </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAction("add")}
+                      className="group flex items-center justify-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-5 py-4 transition hover:border-emerald-400 hover:bg-emerald-100"
+                    >
+                      <TrendingUp className="h-5 w-5 text-emerald-600 transition group-hover:scale-110" />
+                      <div className="text-left">
+                        <p className="font-semibold text-emerald-700">Add Stock</p>
+                        <p className="text-xs text-emerald-600">Increase quantity (Restock)</p>
+                      </div>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveAction("deduct")}
-                    className="group flex items-center justify-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-5 py-4 transition hover:border-red-400 hover:bg-red-100"
-                  >
-                    <TrendingDown className="h-5 w-5 text-red-600 transition group-hover:scale-110" />
-                    <div className="text-left">
-                      <p className="font-semibold text-red-700">Deduct Stock</p>
-                      <p className="text-xs text-red-600">Decrease quantity (Usage)</p>
-                    </div>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAction("deduct")}
+                      className="group flex items-center justify-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-5 py-4 transition hover:border-red-400 hover:bg-red-100"
+                    >
+                      <TrendingDown className="h-5 w-5 text-red-600 transition group-hover:scale-110" />
+                      <div className="text-left">
+                        <p className="font-semibold text-red-700">Deduct Stock</p>
+                        <p className="text-xs text-red-600">Decrease quantity (Usage)</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -311,31 +331,7 @@ const ComprehensiveItemModal = ({
                     />
                   </div>
 
-                  {/* Start Date */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => handleChange("startDate", e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-                    />
-                  </div>
 
-                  {/* End Date */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => handleChange("endDate", e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-                    />
-                  </div>
 
                   {/* Notes */}
                   <div>

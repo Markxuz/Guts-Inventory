@@ -1,4 +1,4 @@
-import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen, Settings } from "lucide-react"
+import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen, Settings, Inbox } from "lucide-react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
@@ -8,6 +8,7 @@ import AddUserModal from "./AddUserModal"
 import UserManagementModal from "./UserManagementModal"
 import TrainerManagementModal from "./TrainerManagementModal"
 import CourseManagementModal from "./CourseManagementModal"
+import AdminRequestPanel from "./AdminRequestPanel"
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }
@@ -26,6 +27,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false)
   const [isCourseManagementOpen, setIsCourseManagementOpen] = useState(false)
+  const [isRequestPanelOpen, setIsRequestPanelOpen] = useState(false)
   const [courseItems, setCourseItems] = useState([])
   const [isCoursesOpen, setIsCoursesOpen] = useState(true)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -254,6 +256,14 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
               <BookOpen className="h-4 w-4 shrink-0" />
               Manage Courses
             </button>
+            <button
+              type="button"
+              onClick={() => setIsRequestPanelOpen(true)}
+              className="w-full flex items-center gap-3 rounded-lg py-2 px-3 bg-slate-700/50 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
+            >
+              <Inbox className="h-4 w-4 shrink-0" />
+              Pending Requests
+            </button>
           </div>
         )}
 
@@ -326,6 +336,10 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
             isOpen={isCourseManagementOpen}
             onClose={() => setIsCourseManagementOpen(false)}
             onCoursesUpdated={handleCoursesUpdated}
+          />
+          <AdminRequestPanel
+            isOpen={isRequestPanelOpen}
+            onClose={() => setIsRequestPanelOpen(false)}
           />
         </>
       )}

@@ -27,7 +27,8 @@ const HistoryPage = () => {
   const [editDescription, setEditDescription] = useState('')
   const [editPurchase, setEditPurchase] = useState(0)
   const [editConsumption, setEditConsumption] = useState(0)
-  const [selectedDate, setSelectedDate] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [isEditLoading, setIsEditLoading] = useState(false)
   const [editError, setEditError] = useState(null)
   const printRef = useRef(null)
@@ -64,8 +65,16 @@ const HistoryPage = () => {
     .filter(h => {
       const matchesPurpose = purposeFilter === 'All' || h.purpose === purposeFilter
       const matchesUsername = !searchUsername || (h.performedBy || 'System').toLowerCase().includes(searchUsername.toLowerCase())
-      const matchesDate = !selectedDate || new Date(h.createdAt).toLocaleDateString('en-CA') === selectedDate
-      return matchesPurpose && matchesUsername && matchesDate
+      
+      // Date range filter
+      let matchesDateRange = true
+      if (startDate || endDate) {
+        const recordDate = new Date(h.createdAt).toLocaleDateString('en-CA')
+        if (startDate && recordDate < startDate) matchesDateRange = false
+        if (endDate && recordDate > endDate) matchesDateRange = false
+      }
+      
+      return matchesPurpose && matchesUsername && matchesDateRange
     })
     .sort((a, b) => {
       const dateA = new Date(a.createdAt)
@@ -359,7 +368,7 @@ const HistoryPage = () => {
       {/* Filters Section */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
         {/* Row 1: Search and Sort */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           {/* Search Username */}
           <div>
             <label className="text-sm font-semibold text-slate-700 block mb-2">Search by Username:</label>
@@ -375,34 +384,52 @@ const HistoryPage = () => {
             />
           </div>
 
-          {/* Sort Toggle and Date Picker */}
+          {/* Sort Toggle */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700 block">Sort by Date:</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setSortDate(sortDate === 'DESC' ? 'ASC' : 'DESC')
-                  setCurrentPage(1)
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition"
-                title={`Sort by date (${sortDate === 'DESC' ? 'Newest' : 'Oldest'} first)`}
-              >
-                <ArrowUpDown className="h-4 w-4" />
-                {sortDate === 'DESC' ? 'Newest' : 'Oldest'}
-              </button>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
-              />
-            </div>
+            <button
+              onClick={() => {
+                setSortDate(sortDate === 'DESC' ? 'ASC' : 'DESC')
+                setCurrentPage(1)
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium transition"
+              title={`Sort by date (${sortDate === 'DESC' ? 'Newest' : 'Oldest'} first)`}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {sortDate === 'DESC' ? 'Newest' : 'Oldest'}
+            </button>
           </div>
 
-          {/* Purpose Filter */}
+          {/* Start Date and End Date */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 block">Start Date:</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 block">End Date:</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Purpose Filter */}
+        <div className="grid gap-4 md:grid-cols-4">
           <div>
             <label className="text-sm font-semibold text-slate-700 block mb-2">Filter by Purpose:</label>
             <select
@@ -418,12 +445,13 @@ const HistoryPage = () => {
         </div>
 
         {/* Clear Filters */}
-        {(searchUsername || purposeFilter !== 'All' || selectedDate) && (
+        {(searchUsername || purposeFilter !== 'All' || startDate || endDate) && (
           <button
             onClick={() => {
               setSearchUsername('')
               setPurposeFilter('All')
-              setSelectedDate('')
+              setStartDate('')
+              setEndDate('')
               setSortDate('DESC')
               setCurrentPage(1)
             }}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ChevronLeft, RefreshCw } from "lucide-react"
+import { ChevronLeft, RefreshCw, Lock } from "lucide-react"
 import Button from "../components/Button"
 import { getInventoryByTrack } from "../api/inventoryApi"
 import { getHistoryLogs, recalculateInventoryHistory } from "../api/historyApi"
@@ -10,6 +10,7 @@ import { useInventoryLocation } from "../context/InventoryLocationContext"
 import { useToast } from "../context/ToastContext"
 import { useAuth } from "../context/AuthContext"
 import ComprehensiveItemModal from "../components/ComprehensiveItemModal"
+import RequestStockModal from "../components/RequestStockModal"
 
 const ItemDetailPage = () => {
   const { success, error: showError } = useToast()
@@ -17,11 +18,16 @@ const ItemDetailPage = () => {
   const navigate = useNavigate()
   const { selectedInventory } = useInventoryLocation()
   const { user } = useAuth()
+  
+  // Check if staff is accessing main inventory (read-only)
+  const isStaffAccessingMain = user?.role === 'staff' && selectedInventory === 'main'
+  
   const [item, setItem] = useState(null)
   const [itemHistory, setItemHistory] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalAction, setModalAction] = useState(null) // "add" or "deduct"
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [purposeFilter, setPurposeFilter] = useState('All')
   const [isSyncing, setIsSyncing] = useState(false)
 
@@ -248,33 +254,56 @@ const ItemDetailPage = () => {
       </div>
 
       {/* Add/Deduct Stock Buttons */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <button
-          onClick={() => openModal("add")}
-          className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 text-left transition hover:border-emerald-400 hover:bg-emerald-100"
-        >
-          <h3 className="text-lg font-bold text-emerald-700 mb-2"> Add Stock</h3>
-          <p className="text-sm text-emerald-600">Increase inventory quantity</p>
-        </button>
-        <button
-          onClick={() => openModal("deduct")}
-          className="rounded-2xl border-2 border-red-200 bg-red-50 p-6 text-left transition hover:border-red-400 hover:bg-red-100"
-        >
-          <h3 className="text-lg font-bold text-red-700 mb-2"> Deduct Stock</h3>
-          <p className="text-sm text-red-600">Decrease inventory quantity</p>
-        </button>
-        <button
-          onClick={handleSyncInventory}
-          disabled={isSyncing}
-          className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-6 text-left transition hover:border-blue-400 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <h3 className="text-lg font-bold text-blue-700 mb-2 flex items-center gap-2">
-            <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
-            Sync Inventory
-          </h3>
-          <p className="text-sm text-blue-600">Recalculate ending inventory</p>
-        </button>
-      </div>
+      {isStaffAccessingMain ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => setIsRequestModalOpen(true)}
+            className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-6 text-left transition hover:border-blue-400 hover:bg-blue-100"
+          >
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Request Stock Modification</h3>
+            <p className="text-sm text-blue-600">Submit a request for approval</p>
+          </button>
+          <button
+            onClick={handleSyncInventory}
+            disabled={isSyncing}
+            className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-400 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <h3 className="text-lg font-bold text-slate-700 mb-2 flex items-center gap-2">
+              <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+              Sync Inventory
+            </h3>
+            <p className="text-sm text-slate-600">Recalculate ending inventory</p>
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button
+            onClick={() => openModal("add")}
+            className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 text-left transition hover:border-emerald-400 hover:bg-emerald-100"
+          >
+            <h3 className="text-lg font-bold text-emerald-700 mb-2"> Add Stock</h3>
+            <p className="text-sm text-emerald-600">Increase inventory quantity</p>
+          </button>
+          <button
+            onClick={() => openModal("deduct")}
+            className="rounded-2xl border-2 border-red-200 bg-red-50 p-6 text-left transition hover:border-red-400 hover:bg-red-100"
+          >
+            <h3 className="text-lg font-bold text-red-700 mb-2"> Deduct Stock</h3>
+            <p className="text-sm text-red-600">Decrease inventory quantity</p>
+          </button>
+          <button
+            onClick={handleSyncInventory}
+            disabled={isSyncing}
+            className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-6 text-left transition hover:border-blue-400 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <h3 className="text-lg font-bold text-blue-700 mb-2 flex items-center gap-2">
+              <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+              Sync Inventory
+            </h3>
+            <p className="text-sm text-blue-600">Recalculate ending inventory</p>
+          </button>
+        </div>
+      )}
 
       {/* History Section */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -381,7 +410,7 @@ const ItemDetailPage = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       <ComprehensiveItemModal
         isOpen={isModalOpen}
         item={item}
@@ -389,6 +418,15 @@ const ItemDetailPage = () => {
         onClose={closeModal}
         onAddStock={modalAction === "add" ? handleAddStock : null}
         onDeductStock={modalAction === "deduct" ? handleDeductStock : null}
+      />
+      
+      <RequestStockModal
+        isOpen={isRequestModalOpen}
+        item={item}
+        onClose={() => setIsRequestModalOpen(false)}
+        onRequestSubmitted={() => {
+          setIsRequestModalOpen(false)
+        }}
       />
     </div>
   )

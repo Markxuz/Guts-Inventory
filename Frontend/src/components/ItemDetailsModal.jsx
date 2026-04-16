@@ -1,6 +1,8 @@
 import { useState } from "react"
-import { X, Package, ShoppingCart, TrendingUp, TrendingDown } from "lucide-react"
+import { X, Package, ShoppingCart, TrendingUp, TrendingDown, Lock } from "lucide-react"
 import Button from "./Button"
+import { useAuth } from "../context/AuthContext"
+import { useInventoryLocation } from "../context/InventoryLocationContext"
 
 const ItemDetailsModal = ({
   isOpen,
@@ -9,6 +11,8 @@ const ItemDetailsModal = ({
   onPurchaseHistory,
   onConsumptionHistory
 }) => {
+  const { user } = useAuth()
+  const { selectedInventory } = useInventoryLocation()
   const [activeAction, setActiveAction] = useState(null)
   const [formData, setFormData] = useState({
     quantity: 1,
@@ -18,6 +22,9 @@ const ItemDetailsModal = ({
   })
 
   if (!isOpen || !item) return null
+
+  // Check if staff user trying to access main inventory
+  const isStaffAccessingMain = user?.role === 'staff' && selectedInventory === 'main'
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -101,33 +108,45 @@ const ItemDetailsModal = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons or Read-Only Message */}
           {!activeAction && (
-            <div className="grid gap-3 sm:grid-cols-2 mb-6">
-              <button
-                type="button"
-                onClick={() => setActiveAction("purchase")}
-                className="group flex items-center justify-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-5 py-4 transition hover:border-emerald-400 hover:bg-emerald-100"
-              >
-                <TrendingUp className="h-5 w-5 text-emerald-600 group-hover:scale-110 transition" />
-                <div className="text-left">
-                  <p className="font-semibold text-emerald-700">Add Stock</p>
-                  <p className="text-xs text-emerald-600">Increase quantity (Restock)</p>
+            <>
+              {isStaffAccessingMain ? (
+                <div className="rounded-xl border-2 border-yellow-300 bg-yellow-50 p-4 mb-6 flex items-center gap-3">
+                  <Lock className="h-5 w-5 text-yellow-600" />
+                  <div>
+                    <p className="font-semibold text-yellow-800">Read-Only Access</p>
+                    <p className="text-sm text-yellow-700">Staff members can only modify training inventory. Contact an administrator to manage main inventory.</p>
+                  </div>
                 </div>
-              </button>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setActiveAction("purchase")}
+                    className="group flex items-center justify-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-5 py-4 transition hover:border-emerald-400 hover:bg-emerald-100"
+                  >
+                    <TrendingUp className="h-5 w-5 text-emerald-600 group-hover:scale-110 transition" />
+                    <div className="text-left">
+                      <p className="font-semibold text-emerald-700">Add Stock</p>
+                      <p className="text-xs text-emerald-600">Increase quantity (Restock)</p>
+                    </div>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveAction("consumption")}
-                className="group flex items-center justify-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-5 py-4 transition hover:border-red-400 hover:bg-red-100"
-              >
-                <TrendingDown className="h-5 w-5 text-red-600 group-hover:scale-110 transition" />
-                <div className="text-left">
-                  <p className="font-semibold text-red-700">Deduct Stock</p>
-                  <p className="text-xs text-red-600">Decrease quantity (Usage)</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveAction("consumption")}
+                    className="group flex items-center justify-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-5 py-4 transition hover:border-red-400 hover:bg-red-100"
+                  >
+                    <TrendingDown className="h-5 w-5 text-red-600 group-hover:scale-110 transition" />
+                    <div className="text-left">
+                      <p className="font-semibold text-red-700">Deduct Stock</p>
+                      <p className="text-xs text-red-600">Decrease quantity (Usage)</p>
+                    </div>
+                  </button>
                 </div>
-              </button>
-            </div>
+              )}
+            </>
           )}
 
           {/* Form Section */}

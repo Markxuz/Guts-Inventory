@@ -361,6 +361,14 @@ const updateStock = async (req, res) => {
     }
 
     const currentLocation = req.body.location || 'main';
+    
+    // Role-based access control: Staff can only modify training inventory
+    if (req.user?.role === 'staff' && currentLocation === 'main') {
+      return res.status(403).json({ 
+        error: 'Staff members can only modify training inventory. Contact an administrator to modify main inventory.' 
+      });
+    }
+    
     const oppositeLocation = currentLocation === 'main' ? 'annex' : 'main';
     
     // Get the location-specific quantity fields

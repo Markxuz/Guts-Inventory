@@ -181,13 +181,20 @@ const Dashboard = () => {
           ? 'rounded-xl border border-slate-200 bg-slate-50 p-3' 
           : 'rounded-xl border-2 border-yellow-200 bg-yellow-50 p-3'
       } mb-4`}>
-        <p className={`text-sm font-semibold mb-3 ${
-          selectedInventory 
-            ? 'text-slate-700' 
-            : 'text-yellow-800'
-        }`}>
-          {selectedInventory ? 'Current Location' : 'Please select an inventory location to proceed:'}
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className={`text-sm font-semibold ${
+            selectedInventory 
+              ? 'text-slate-700' 
+              : 'text-yellow-800'
+          }`}>
+            {selectedInventory ? 'Current Location' : 'Please select an inventory location to proceed:'}
+          </p>
+          {selectedInventory && (
+            <span className="text-sm font-bold text-[#800000] bg-white px-3 py-1 rounded-lg">
+              {selectedInventory === 'main' ? 'Main Inventory' : 'Training Inventory'}
+            </span>
+          )}
+        </div>
         <InventorySelector />
       </div>
 

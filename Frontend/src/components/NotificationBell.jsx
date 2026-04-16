@@ -33,6 +33,12 @@ const NotificationBell = () => {
         return 'border-l-yellow-500 bg-yellow-50';
       case 'report_printed':
         return 'border-l-purple-500 bg-purple-50';
+      case 'stock_requested':
+        return 'border-l-teal-500 bg-teal-50';
+      case 'request_approved':
+        return 'border-l-emerald-500 bg-emerald-50';
+      case 'request_rejected':
+        return 'border-l-red-500 bg-red-50';
       default:
         return 'border-l-gray-500 bg-gray-50';
     }
@@ -48,6 +54,12 @@ const NotificationBell = () => {
         return '📉';
       case 'report_printed':
         return '🖨️';
+      case 'stock_requested':
+        return '📋';
+      case 'request_approved':
+        return '✅';
+      case 'request_rejected':
+        return '❌';
       default:
         return '🔔';
     }

@@ -11,12 +11,14 @@ const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const trainerRoutes = require('./routes/trainerRoutes');
 const courseRoutes = require('./routes/courseRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 const User = require('./models/User');
 const Trainer = require('./models/Trainer');
 const Course = require('./models/Course');
 const Consumable = require('./models/Consumable');
 const InventoryHistory = require('./models/InventoryHistory');
 const Notification = require('./models/Notification');
+const ConsumableRequest = require('./models/ConsumableRequest');
 
 const app = express();
 const server = http.createServer(app);
@@ -54,6 +56,9 @@ io.on('connection', (socket) => {
   });
 });
 
+// Make io accessible globally
+global.io = io;
+
 // Make io accessible to routes
 app.locals.io = io;
 app.locals.userSockets = userSockets;
@@ -71,6 +76,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/requests', requestRoutes);
 app.use('/api', trainerRoutes);
 app.use('/api', courseRoutes);
 
@@ -90,7 +96,7 @@ const start = async () => {
     console.log('✔  Database connection established.');
 
     // Set up associations
-    const models = { User, Trainer, Course, Consumable, InventoryHistory, Notification };
+    const models = { User, Trainer, Course, Consumable, InventoryHistory, Notification, ConsumableRequest };
     Object.values(models).forEach(model => {
       if (model.associate) {
         model.associate(models);
