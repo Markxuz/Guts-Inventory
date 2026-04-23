@@ -12,7 +12,15 @@ const Notification = sequelize.define('Notification', {
     allowNull: false,
   },
   type: {
-    type: DataTypes.ENUM('stock_added', 'stock_removed', 'consumable_added', 'report_printed'),
+    type: DataTypes.ENUM(
+      'stock_added',
+      'stock_removed',
+      'consumable_added',
+      'report_printed',
+      'stock_requested',
+      'request_approved',
+      'request_rejected'
+    ),
     allowNull: false,
   },
   message: {

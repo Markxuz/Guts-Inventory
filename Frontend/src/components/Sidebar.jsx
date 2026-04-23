@@ -1,5 +1,5 @@
 import { Archive as BoxArchive, ChevronLeft, ChevronDown, Clock, LayoutDashboard, PackageOpen, ShieldCheck, Wrench, LogOut, User, Users, BookOpen, Settings, Inbox } from "lucide-react"
-import { NavLink, useNavigate } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useToast } from "../context/ToastContext"
@@ -23,6 +23,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
   const { user, logout } = useAuth()
   const { success } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
   const [isTrainerManagementOpen, setIsTrainerManagementOpen] = useState(false)
@@ -65,6 +66,20 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
       console.error('Error fetching courses:', err)
     }
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const shouldOpenPending = params.get("openPendingRequests") === "1"
+
+    if (shouldOpenPending && user?.role === "admin") {
+      setIsRequestPanelOpen(true)
+      if (location.pathname !== "/dashboard") {
+        navigate("/dashboard", { replace: true })
+      } else {
+        navigate("/dashboard", { replace: true })
+      }
+    }
+  }, [location.pathname, location.search, navigate, user?.role])
 
   return (
     <div className="flex h-full flex-col">

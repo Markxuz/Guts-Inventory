@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
-import Button from "./Button"
 import { useToast } from "../context/ToastContext"
 import { getTrainers } from "../api/authApi"
 import api from "../api/axios"
@@ -18,12 +17,11 @@ const RequestStockModal = ({
     course: "",
     trainer: "",
     purpose: "Training",
-    startDate: "",
-    endDate: "",
   })
   const [trainers, setTrainers] = useState([])
   const [loadingTrainers, setLoadingTrainers] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
 
   // Fetch trainers on component mount
   useEffect(() => {
@@ -45,16 +43,14 @@ const RequestStockModal = ({
   // Initialize form when modal opens
   useEffect(() => {
     if (isOpen) {
-      const today = new Date().toISOString().split('T')[0]
       setFormData({
         quantity: "",
         reason: "",
         course: "",
         trainer: "",
         purpose: "Training",
-        startDate: today,
-        endDate: today,
       })
+      setSubmitError("")
     }
   }, [isOpen])
 
@@ -78,8 +74,11 @@ const RequestStockModal = ({
       return
     }
 
+    setSubmitError("")
     setIsSubmitting(true)
     try {
+      const today = new Date().toISOString().split("T")[0]
+
       const response = await api.post('/requests', {
         consumableId: item.id,
         requestType: 'Stock In',
@@ -88,18 +87,25 @@ const RequestStockModal = ({
         course: formData.course || null,
         trainer: formData.trainer || null,
         purpose: formData.purpose,
-        startDate: formData.startDate || null,
-        endDate: formData.endDate || null,
+        startDate: today,
+        endDate: today,
       })
 
       success("✓ Request submitted successfully! Administrators will review your request shortly.")
-      onClose()
-      
+
       if (onRequestSubmitted) {
-        onRequestSubmitted(response.data.request)
+        try {
+          onRequestSubmitted(response.data.request)
+        } catch (callbackError) {
+          console.error("onRequestSubmitted callback error:", callbackError)
+        }
       }
+
+      onClose()
     } catch (error) {
-      showError(error.response?.data?.error || "Failed to submit request.")
+      const message = error.response?.data?.error || "Failed to submit request."
+      setSubmitError(message)
+      showError(`${message} Please retry.`)
     } finally {
       setIsSubmitting(false)
     }
@@ -108,8 +114,8 @@ const RequestStockModal = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 sm:items-center">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-title text-2xl font-bold text-[#800000]">
@@ -219,37 +225,12 @@ const RequestStockModal = ({
             </select>
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => handleChange("startDate", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => handleChange("endDate", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20"
-              />
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="mt-6 flex gap-3">
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
@@ -259,9 +240,15 @@ const RequestStockModal = ({
               disabled={isSubmitting}
               className="flex-1 rounded-lg bg-[#800000] px-4 py-2 font-semibold text-white hover:bg-[#660000] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Submitting..." : "Submit Request"}
+              {isSubmitting ? "Submitting..." : submitError ? "Retry Request" : "Submit Request"}
             </button>
           </div>
+
+          {submitError && (
+            <p className="text-sm text-red-600">
+              Submit failed. Check your input or connection, then click Retry Request.
+            </p>
+          )}
         </form>
       </div>
     </div>

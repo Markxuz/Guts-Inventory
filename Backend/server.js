@@ -58,6 +58,7 @@ io.on('connection', (socket) => {
 
 // Make io accessible globally
 global.io = io;
+global.userSockets = userSockets;
 
 // Make io accessible to routes
 app.locals.io = io;

@@ -82,18 +82,35 @@ const NotificationBell = () => {
   };
 
   const handleNotificationClick = async (notif) => {
+    const metadata = typeof notif.metadata === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(notif.metadata)
+          } catch {
+            return null
+          }
+        })()
+      : notif.metadata;
+
     // Mark as read
     if (!notif.isRead) {
       await markAsRead(notif.id);
     }
 
+    // Admin stock-request notification should open Pending Requests panel.
+    if (notif.type === 'stock_requested' || metadata?.target === 'pending-requests') {
+      setIsOpen(false);
+      navigate('/dashboard?openPendingRequests=1');
+      return;
+    }
+
     // Navigate to item if metadata contains itemId and track
-    if (notif.metadata && notif.metadata.itemId && notif.metadata.track) {
+    if (metadata && metadata.itemId && metadata.track) {
       // Set inventory location to main
       handleInventoryChange('main');
       setIsOpen(false);
       // Navigate to item
-      navigate(`/inventory/${notif.metadata.track}/${notif.metadata.itemId}`);
+      navigate(`/inventory/${metadata.track}/${metadata.itemId}`);
     }
   };
 

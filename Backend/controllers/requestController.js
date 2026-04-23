@@ -4,6 +4,13 @@ const InventoryHistory = require('../models/InventoryHistory');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 
+const emitUserNotification = (userId, notification) => {
+  const socketId = global.userSockets?.[userId];
+  if (socketId && global.io) {
+    global.io.to(socketId).emit('new_notification', notification);
+  }
+};
+
 // Create a new stock modification request (staff only)
 exports.createRequest = async (req, res) => {
   try {
@@ -52,16 +59,13 @@ exports.createRequest = async (req, res) => {
       status: 'pending',
     });
 
-    // Notify all admins
-    const admins = await User.findAll({ where: { role: 'admin' } });
-    const adminIds = admins.map(a => a.id);
+    // Keep request creation successful even if notification side-effects fail.
+    try {
+      const admins = await User.findAll({ where: { role: 'admin' } });
+      const adminIds = admins.map(a => a.id);
 
-    if (adminIds.length > 0) {
-      await Notification.create({
-        userId: adminIds[0], // Will broadcast to all via socket
-        type: 'stock_requested',
-        message: `${requesterName} requested ${requestType === 'Stock In' ? 'to add' : 'to remove'} ${quantity} units of ${consumable.itemName}`,
-        metadata: JSON.stringify({
+      if (adminIds.length > 0) {
+        const metadata = {
           requestId: request.id,
           consumableId,
           requesterId: userId,
@@ -69,19 +73,32 @@ exports.createRequest = async (req, res) => {
           itemName: consumable.itemName,
           quantity,
           requestType,
-        }),
-        isRead: false,
-      });
+          target: 'pending-requests',
+        };
 
-      // Broadcast to all admin sockets
-      global.io?.emit('admin_notification', {
-        type: 'stock_requested',
-        requestId: request.id,
-        requesterName,
-        itemName: consumable.itemName,
-        quantity,
-        requestType,
-      });
+        const notifications = await Notification.bulkCreate(
+          adminIds.map((adminId) => ({
+            userId: adminId,
+            type: 'stock_requested',
+            message: `${requesterName} requested ${requestType === 'Stock In' ? 'to add' : 'to remove'} ${quantity} units of ${consumable.itemName}`,
+            metadata: JSON.stringify(metadata),
+            isRead: false,
+          })),
+          { returning: true }
+        );
+
+        if (global.io) {
+          const userSockets = global.userSockets || {};
+          notifications.forEach((notification) => {
+            const socketId = userSockets[notification.userId];
+            if (socketId) {
+              global.io.to(socketId).emit('new_notification', notification);
+            }
+          });
+        }
+      }
+    } catch (notifyError) {
+      console.error('Request created but notification failed:', notifyError);
     }
 
     res.status(201).json({
@@ -232,28 +249,47 @@ exports.approveRequest = async (req, res) => {
     request.approvedAt = new Date();
     await request.save();
 
-    // Notify staff user
-    await Notification.create({
-      userId: request.requestedById,
-      type: 'request_approved',
-      message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable.itemName} has been approved.`,
-      metadata: JSON.stringify({
-        requestId: request.id,
-        consumableId: request.consumableId,
-        itemName: consumable.itemName,
-        quantity: request.quantity,
-        approvalNotes: notes,
-      }),
-      isRead: false,
-    });
+    // Keep approval successful even if notification side-effects fail.
+    try {
+      await Notification.create({
+        userId: request.requestedById,
+        type: 'request_approved',
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable.itemName} has been approved.`,
+        metadata: JSON.stringify({
+          requestId: request.id,
+          consumableId: request.consumableId,
+          itemName: consumable.itemName,
+          quantity: request.quantity,
+          approvalNotes: notes,
+        }),
+        isRead: false,
+      });
 
-    // Broadcast to staff user's socket if connected
-    global.io?.emit('request_approved', {
-      requestId: request.id,
-      userId: request.requestedById,
-      itemName: consumable.itemName,
-      message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units has been approved.`,
-    });
+      emitUserNotification(request.requestedById, {
+        userId: request.requestedById,
+        type: 'request_approved',
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable.itemName} has been approved.`,
+        metadata: {
+          requestId: request.id,
+          consumableId: request.consumableId,
+          itemName: consumable.itemName,
+          quantity: request.quantity,
+          approvalNotes: notes,
+        },
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Broadcast to staff user's socket if connected
+      global.io?.emit('request_approved', {
+        requestId: request.id,
+        userId: request.requestedById,
+        itemName: consumable.itemName,
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units has been approved.`,
+      });
+    } catch (notifyError) {
+      console.error('Request approved but notification failed:', notifyError);
+    }
 
     res.json({
       message: 'Request approved successfully!',
@@ -303,29 +339,48 @@ exports.rejectRequest = async (req, res) => {
     // Get consumable for notification
     const consumable = await Consumable.findByPk(request.consumableId);
 
-    // Notify staff user
-    await Notification.create({
-      userId: request.requestedById,
-      type: 'request_rejected',
-      message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable?.itemName || 'item'} has been rejected.`,
-      metadata: JSON.stringify({
-        requestId: request.id,
-        consumableId: request.consumableId,
-        itemName: consumable?.itemName,
-        quantity: request.quantity,
-        rejectionReason: reason,
-      }),
-      isRead: false,
-    });
+    // Keep rejection successful even if notification side-effects fail.
+    try {
+      await Notification.create({
+        userId: request.requestedById,
+        type: 'request_rejected',
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable?.itemName || 'item'} has been rejected.`,
+        metadata: JSON.stringify({
+          requestId: request.id,
+          consumableId: request.consumableId,
+          itemName: consumable?.itemName,
+          quantity: request.quantity,
+          rejectionReason: reason,
+        }),
+        isRead: false,
+      });
 
-    // Broadcast to staff user's socket if connected
-    global.io?.emit('request_rejected', {
-      requestId: request.id,
-      userId: request.requestedById,
-      itemName: consumable?.itemName,
-      reason,
-      message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units has been rejected: ${reason}`,
-    });
+      emitUserNotification(request.requestedById, {
+        userId: request.requestedById,
+        type: 'request_rejected',
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units of ${consumable?.itemName || 'item'} has been rejected.`,
+        metadata: {
+          requestId: request.id,
+          consumableId: request.consumableId,
+          itemName: consumable?.itemName,
+          quantity: request.quantity,
+          rejectionReason: reason,
+        },
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Broadcast to staff user's socket if connected
+      global.io?.emit('request_rejected', {
+        requestId: request.id,
+        userId: request.requestedById,
+        itemName: consumable?.itemName,
+        reason,
+        message: `Your request to ${request.requestType === 'Stock In' ? 'add' : 'remove'} ${request.quantity} units has been rejected: ${reason}`,
+      });
+    } catch (notifyError) {
+      console.error('Request rejected but notification failed:', notifyError);
+    }
 
     res.json({
       message: 'Request rejected successfully!',
