@@ -140,7 +140,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
         <div>
           <button
             type="button"
-            onClick={() => !isCollapsed && setIsCoursesOpen(!isCoursesOpen)}
+            onClick={() => setIsCoursesOpen(!isCoursesOpen)}
             title={isCollapsed ? "Courses" : undefined}
             className={`w-full group flex items-center rounded-r-xl border-l-4 py-3 text-sm font-semibold transition-all duration-300 border-transparent text-slate-200 hover:bg-slate-700/70 hover:text-white ${isCollapsed ? "justify-center px-2" : "gap-3 px-5"}`}
           >
@@ -150,35 +150,47 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
             >
               Courses
             </span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-4 opacity-100"} ${isCoursesOpen ? "rotate-180" : "rotate-0"}`}
-            />
+            {!isCollapsed && (
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-300 ${isCoursesOpen ? "rotate-180" : "rotate-0"}`}
+              />
+            )}
           </button>
 
-          {/* Course Items */}
-          {isCoursesOpen && !isCollapsed && (
-            <div className="mt-2 space-y-2 pl-2">
-              {courseItems.map((item) => {
-                const Icon = item.icon
+          {/* Course Items - Dropdown */}
+          {isCoursesOpen && (
+            <div className={`space-y-2 ${isCollapsed ? "px-1 py-2" : "mt-2 pl-2"}`}>
+              {courseItems.length > 0 ? (
+                courseItems.map((item) => {
+                  const Icon = item.icon
 
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      `group flex items-center rounded-r-lg border-l-4 py-2 px-3 text-xs font-semibold transition-all duration-300 ${
-                        isActive
-                          ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
-                          : "border-transparent text-slate-300 hover:bg-slate-700/50 hover:text-white"
-                      }`
-                    }
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="ml-3 whitespace-nowrap">{item.label}</span>
-                  </NavLink>
-                )
-              })}
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => {
+                        onNavigate()
+                        if (isCollapsed) setIsCoursesOpen(false)
+                      }}
+                      className={({ isActive }) =>
+                        `group flex items-center rounded-lg border-l-4 py-2 px-3 text-xs font-semibold transition-all duration-300 ${
+                          isActive
+                            ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
+                            : "border-transparent text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                        }`
+                      }
+                      title={isCollapsed ? item.label : undefined}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className={`whitespace-nowrap ml-3 transition-all duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"}`}>{item.label}</span>
+                    </NavLink>
+                  )
+                })
+              ) : (
+                <div className={`text-xs text-slate-400 px-3 py-2`}>
+                  No courses available
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -189,7 +201,7 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
         <div>
           <button
             type="button"
-            onClick={() => !isCollapsed && setIsSettingsOpen(!isSettingsOpen)}
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             title={isCollapsed ? "Settings" : undefined}
             className={`w-full group flex items-center rounded-r-xl border-l-4 py-3 text-sm font-semibold transition-all duration-300 border-transparent text-slate-200 hover:bg-slate-700/70 hover:text-white ${isCollapsed ? "justify-center px-2" : "gap-3 px-5"}`}
           >
@@ -199,14 +211,16 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
             >
               Settings
             </span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-4 opacity-100"} ${isSettingsOpen ? "rotate-180" : "rotate-0"}`}
-            />
+            {!isCollapsed && (
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-300 ${isSettingsOpen ? "rotate-180" : "rotate-0"}`}
+              />
+            )}
           </button>
 
-          {/* Settings Items */}
-          {isSettingsOpen && !isCollapsed && (
-            <div className="mt-2 space-y-2 pl-2">
+          {/* Settings Items - Dropdown */}
+          {isSettingsOpen && (
+            <div className={`space-y-2 ${isCollapsed ? "px-1 py-2" : "mt-2 pl-2"}`}>
               {settingsItems
                 .filter(item => {
                   // Only show Archive Vault to admins
@@ -222,17 +236,21 @@ const Sidebar = ({ isCollapsed = false, onToggleCollapse, isMobile = false, onNa
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    onClick={onNavigate}
+                    onClick={() => {
+                      onNavigate()
+                      if (isCollapsed) setIsSettingsOpen(false)
+                    }}
                     className={({ isActive }) =>
-                      `group flex items-center rounded-r-lg border-l-4 py-2 px-3 text-xs font-semibold transition-all duration-300 ${
+                      `group flex items-center rounded-lg border-l-4 py-2 px-3 text-xs font-semibold transition-all duration-300 ${
                         isActive
                           ? "border-[var(--brand-primary)] bg-slate-100 text-[var(--brand-primary)]"
                           : "border-transparent text-slate-300 hover:bg-slate-700/50 hover:text-white"
                       }`
                     }
+                    title={isCollapsed ? item.label : undefined}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    <span className="ml-3 whitespace-nowrap">{item.label}</span>
+                    <span className={`whitespace-nowrap ml-3 transition-all duration-300 ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"}`}>{item.label}</span>
                   </NavLink>
                 )
               })}
