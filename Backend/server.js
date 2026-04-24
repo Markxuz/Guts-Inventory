@@ -108,6 +108,51 @@ const start = async () => {
     await sequelize.sync({ alter: true });
     console.log('✔  Database models synced.');
 
+    // Initialize default users
+    try {
+      const existingAdmin = await User.count({ where: { username: 'admin' } });
+      if (existingAdmin === 0) {
+        await User.create({
+          username: 'admin',
+          email: 'admin@vailacademy.org',
+          password: 'admin123456',
+          fullName: 'System Administrator',
+          role: 'admin',
+          isActive: true,
+        });
+        console.log('✔  Admin user created (username: admin, password: admin123456)');
+      } else {
+        console.log('ℹ  Admin user already exists');
+      }
+    } catch (adminErr) {
+      console.error('⚠  Admin user creation error:', adminErr.message);
+      if (adminErr.errors) {
+        adminErr.errors.forEach(err => console.error('  -', err.message));
+      }
+    }
+
+    try {
+      const existingStaff = await User.count({ where: { username: 'staff' } });
+      if (existingStaff === 0) {
+        await User.create({
+          username: 'staff',
+          email: 'staff@vailacademy.org',
+          password: 'staff123456',
+          fullName: 'Staff Member',
+          role: 'staff',
+          isActive: true,
+        });
+        console.log('✔  Staff user created (username: staff, password: staff123456)');
+      } else {
+        console.log('ℹ  Staff user already exists');
+      }
+    } catch (staffErr) {
+      console.error('⚠  Staff user creation error:', staffErr.message);
+      if (staffErr.errors) {
+        staffErr.errors.forEach(err => console.error('  -', err.message));
+      }
+    }
+
     server.listen(PORT, () => {
       console.log(`✔  Server running → http://localhost:${PORT}`);
     });
