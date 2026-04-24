@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
+import { useToast } from "../context/ToastContext"
 import { login as loginApi } from "../api/authApi"
 
 const LoginPage = () => {
@@ -11,6 +12,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { login } = useAuth()
+  const { success, error: showError } = useToast()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -19,16 +21,27 @@ const LoginPage = () => {
     setIsLoading(true)
 
     try {
+      console.log("🔐 Attempting login with username:", username)
       const data = await loginApi(username, password)
+      console.log("✅ Login response received:", data)
 
       // Update auth context and localStorage
       login(data.user, data.token)
+      console.log("✅ Auth context updated")
+
+      // Show success toast
+      success(`Welcome ${data.user.fullName || username}! 🎉`)
       
-      // Navigate to dashboard
-      navigate("/dashboard", { replace: true })
+      // Small delay to ensure state is updated before navigation
+      setTimeout(() => {
+        console.log("🚀 Navigating to dashboard")
+        navigate("/dashboard", { replace: true })
+      }, 500)
     } catch (err) {
-      console.error("Login error:", err)
-      setError(err.response?.data?.error || "Login failed. Please try again.")
+      console.error("❌ Login error:", err)
+      const errorMessage = err.response?.data?.error || err.message || "Login failed. Please try again."
+      setError(errorMessage)
+      showError(errorMessage)
     } finally {
       setIsLoading(false)
     }
